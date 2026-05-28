@@ -9,6 +9,7 @@ export const envSchema = z.object({
   CRON_SECRET: z.string().min(16),
   GSC_CLIENT_ID: z.string().min(1),
   GSC_CLIENT_SECRET: z.string().min(1),
+  DATABASE_URL_TEST: z.string().url().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
