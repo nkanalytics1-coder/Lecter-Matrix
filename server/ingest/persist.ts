@@ -34,6 +34,10 @@ interface Accumulator {
   posWeightedSum: number
 }
 
+// Postgres rejects statements with >65534 parameters; chunk to stay well under the limit.
+const COLS_PER_ROW = 9
+const BATCH_SIZE = Math.floor(60_000 / COLS_PER_ROW) // ~6666 rows per INSERT
+
 export async function persistDate(
   projectId: string,
   date: string,
@@ -82,15 +86,18 @@ export async function persistDate(
   }))
 
   await sql.begin(async (tx) => {
-    await tx`
-      INSERT INTO gsc_metric ${tx(normalized, 'project_id', 'date', 'query', 'query_norm', 'page', 'page_type', 'clicks', 'impressions', 'position')}
-      ON CONFLICT (project_id, date, query_norm, page)
-      DO UPDATE SET
-        query       = EXCLUDED.query,
-        page_type   = EXCLUDED.page_type,
-        clicks      = EXCLUDED.clicks,
-        impressions = EXCLUDED.impressions,
-        position    = EXCLUDED.position
-    `
+    for (let i = 0; i < normalized.length; i += BATCH_SIZE) {
+      const batch = normalized.slice(i, i + BATCH_SIZE)
+      await tx`
+        INSERT INTO gsc_metric ${tx(batch, 'project_id', 'date', 'query', 'query_norm', 'page', 'page_type', 'clicks', 'impressions', 'position')}
+        ON CONFLICT (project_id, date, query_norm, page)
+        DO UPDATE SET
+          query       = EXCLUDED.query,
+          page_type   = EXCLUDED.page_type,
+          clicks      = EXCLUDED.clicks,
+          impressions = EXCLUDED.impressions,
+          position    = EXCLUDED.position
+      `
+    }
   })
 }

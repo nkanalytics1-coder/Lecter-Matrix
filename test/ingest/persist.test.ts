@@ -254,4 +254,28 @@ describe.skipIf(!TEST_DB)('persist: persistDate', () => {
     if (baselineRow === undefined) throw new Error('Expected baseline row')
     expect(baselineRow.clicks).toBe(7)
   })
+
+  it('large batch: persists >7000 unique rows across multiple INSERT batches', async () => {
+    const date = '2025-03-10'
+    const ROW_COUNT = 7_500
+
+    const inputRows = Array.from({ length: ROW_COUNT }, (_, i) => ({
+      query: `keyword ${i}`,
+      page: `https://example.com/products/item-${i}`,
+      clicks: 1,
+      impressions: 10,
+      position: 5.0,
+    }))
+
+    await persistDate(PROJECT_ID, date, inputRows)
+
+    const [result] = await sql<{ count: number; total_clicks: number }[]>`
+      SELECT COUNT(*)::integer AS count, SUM(clicks)::integer AS total_clicks
+      FROM gsc_metric
+      WHERE project_id = ${PROJECT_ID} AND date = ${date}
+    `
+    if (result === undefined) throw new Error('Expected count row')
+    expect(result.count).toBe(ROW_COUNT)
+    expect(result.total_clicks).toBe(ROW_COUNT)
+  }, 30_000)
 })
