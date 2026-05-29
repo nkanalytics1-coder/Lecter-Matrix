@@ -101,10 +101,13 @@ export function SettingsForm({ projectId, initialData }: Props) {
     setGscMsg(null)
     try {
       const res = await apiClient<{ url: string }>(`/api/projects/${projectId}/gsc/auth-url`)
-      if (res.error !== null) { setGscMsg('OAuth non ancora implementato'); return }
+      if (res.error !== null) {
+        setGscMsg(res.error.message)
+        return
+      }
       window.location.href = res.data.url
-    } catch {
-      setGscMsg('OAuth non ancora implementato')
+    } catch (err) {
+      setGscMsg(err instanceof Error ? err.message : 'Errore di rete')
     }
   }
 

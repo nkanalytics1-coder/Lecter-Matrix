@@ -72,8 +72,19 @@ export function Wizard(): ReactElement {
     setStep(3)
   }
 
-  function handleConnectGsc() {
-    setGscMsg('OAuth non ancora implementato — sarà disponibile a breve.')
+  async function handleConnectGsc() {
+    if (createdId === null) return
+    setGscMsg(null)
+    try {
+      const res = await apiClient<{ url: string }>(`/api/projects/${createdId}/gsc/auth-url`)
+      if (res.error !== null) {
+        setGscMsg(res.error.message)
+        return
+      }
+      window.location.href = res.data.url
+    } catch (err) {
+      setGscMsg(err instanceof Error ? err.message : 'Errore di rete')
+    }
   }
 
   const inputCls = 'rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
@@ -169,7 +180,7 @@ export function Wizard(): ReactElement {
           <div className="flex flex-col gap-3">
             <button
               type="button"
-              onClick={handleConnectGsc}
+              onClick={() => { void handleConnectGsc() }}
               className={btnSecondary}
             >
               Connetti a Google Search Console
