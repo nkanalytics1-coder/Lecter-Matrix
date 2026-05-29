@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useQueryStates } from 'nuqs'
 import type { CannibalizationGroupDTO } from '@/src/contracts/types/entities'
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function GroupTable({ projectId, initialData }: Props) {
+  const router = useRouter()
   const [params, setParams] = useQueryStates(groupListQueryParsers)
   const [allRows, setAllRows] = useState<CannibalizationGroupDTO[]>(initialData.items)
   const [nextCursorState, setNextCursorState] = useState<string | null>(
@@ -130,6 +132,7 @@ export function GroupTable({ projectId, initialData }: Props) {
         rows={allRows}
         onLoadMore={handleLoadMore}
         hasMore={nextCursorState !== null}
+        onRowClick={(row) => router.push(`/p/${projectId}/groups/${row.id}`)}
       />
     </div>
   )

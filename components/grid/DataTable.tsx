@@ -36,6 +36,7 @@ interface DataTableProps<Row extends object> {
   rows: Row[]
   onLoadMore: () => void
   hasMore: boolean
+  onRowClick?: (row: Row) => void
 }
 
 export default function DataTable<Row extends object>({
@@ -43,6 +44,7 @@ export default function DataTable<Row extends object>({
   rows,
   onLoadMore,
   hasMore,
+  onRowClick,
 }: DataTableProps<Row>) {
   const [sort, setSort] = useQueryState(
     'sort',
@@ -154,7 +156,18 @@ export default function DataTable<Row extends object>({
           <div
             key={rowIdx}
             role="row"
-            className="flex border-b border-border hover:bg-accent/50"
+            tabIndex={onRowClick ? 0 : undefined}
+            className={[
+              'flex border-b border-border hover:bg-accent/50',
+              onRowClick ? 'cursor-pointer' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={onRowClick ? () => onRowClick(row) : undefined}
+            onKeyDown={onRowClick ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onRowClick(row)
+              }
+            } : undefined}
           >
             {columns.map((col, colIdx) => {
               const value: unknown = (row as Record<string, unknown>)[col.accessor]
