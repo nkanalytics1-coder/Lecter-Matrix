@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/tick",
+      "schedule": "0 6 * * *"
+    }
+  ],
+  "functions": {
+    "app/api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL":      "@next-public-supabase-url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next-public-supabase-anon-key",
+    "SUPABASE_SERVICE_ROLE_KEY":     "@supabase-service-role-key",
+    "SUPABASE_DB_URL":               "@supabase-db-url",
+    "CRON_SECRET":                   "@cron-secret"
+  }
+}
