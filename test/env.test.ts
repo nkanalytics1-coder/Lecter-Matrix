@@ -6,10 +6,7 @@ const valid = {
   NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon-key',
   NEXT_PUBLIC_URL: 'https://example.com',
   SUPABASE_SERVICE_ROLE_KEY: 'svc-key',
-  TOKEN_ENC_KEY: 'a'.repeat(32),
   CRON_SECRET: 'b'.repeat(16),
-  GSC_CLIENT_ID: 'gsc-id',
-  GSC_CLIENT_SECRET: 'gsc-secret',
 }
 
 describe('envSchema', () => {
@@ -22,10 +19,7 @@ describe('envSchema', () => {
     'NEXT_PUBLIC_SUPABASE_ANON_KEY',
     'NEXT_PUBLIC_URL',
     'SUPABASE_SERVICE_ROLE_KEY',
-    'TOKEN_ENC_KEY',
     'CRON_SECRET',
-    'GSC_CLIENT_ID',
-    'GSC_CLIENT_SECRET',
   ])('rejects missing %s', (key) => {
     const copy: Record<string, string | undefined> = { ...valid }
     delete copy[key]
@@ -35,12 +29,6 @@ describe('envSchema', () => {
   it('rejects an invalid URL for NEXT_PUBLIC_SUPABASE_URL', () => {
     expect(
       envSchema.safeParse({ ...valid, NEXT_PUBLIC_SUPABASE_URL: 'not-a-url' }).success,
-    ).toBe(false)
-  })
-
-  it('rejects TOKEN_ENC_KEY shorter than 32 chars', () => {
-    expect(
-      envSchema.safeParse({ ...valid, TOKEN_ENC_KEY: 'short' }).success,
     ).toBe(false)
   })
 
@@ -55,7 +43,7 @@ describe('parseEnv', () => {
   it('returns the typed env on valid input', () => {
     const result = parseEnv(valid)
     expect(result.NEXT_PUBLIC_SUPABASE_URL).toBe(valid.NEXT_PUBLIC_SUPABASE_URL)
-    expect(result.TOKEN_ENC_KEY).toBe(valid.TOKEN_ENC_KEY)
+    expect(result.CRON_SECRET).toBe(valid.CRON_SECRET)
   })
 
   it('throws on missing required var and names it', () => {
