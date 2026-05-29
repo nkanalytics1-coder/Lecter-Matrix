@@ -14,16 +14,8 @@ import { recommendedAction } from './action-table'
 import { detectIntent, slugTokens, DEFAULT_SIGNALS } from '../ingest/normalize'
 import type { IntentSignals } from '../ingest/normalize'
 import type { PageType } from '../../src/contracts/types/domain'
+import type { ProjectConfig } from '../../src/contracts/schemas/project-config'
 import { log } from '../log'
-
-interface DetectionConfig {
-  min_members?: number
-  min_group_impressions?: number
-  min_member_impressions?: number
-  max_members?: number
-  intent_signals_extra?: string[]
-  brand_terms?: string[]
-}
 
 const DEFAULTS = {
   min_members: 2,
@@ -71,12 +63,12 @@ export async function runDetection(
   const reqId = `detect:${runId}`
 
   try {
-    const [projRow] = await sql<{ config: DetectionConfig }[]>`
+    const [projRow] = await sql<{ config: ProjectConfig }[]>`
       SELECT config FROM project WHERE id = ${projectId}
     `
-    const rawCfg: DetectionConfig =
+    const rawCfg: ProjectConfig =
       typeof projRow?.config === 'string'
-        ? (JSON.parse(projRow.config) as DetectionConfig)
+        ? (JSON.parse(projRow.config) as ProjectConfig)
         : (projRow?.config ?? {})
     const cfg = {
       min_members:           rawCfg.min_members           ?? DEFAULTS.min_members,
