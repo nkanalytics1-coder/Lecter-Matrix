@@ -57,12 +57,12 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // Page routes under /p/* → redirect to /login
+  // Page routes → redirect to /login
   const loginUrl = request.nextUrl.clone()
   loginUrl.pathname = '/login'
   return NextResponse.redirect(loginUrl)
 }
 
 export const config = {
-  matcher: ['/p/:path*', '/api/:path*'],
+  matcher: ['/', '/p/:path*', '/api/:path*'],
 }

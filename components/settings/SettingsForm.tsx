@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import type { ProjectDTO } from '@/src/contracts/types/entities'
@@ -28,7 +29,8 @@ function TextInput({ id, label, value, onChange }: { id: string; label: string; 
 }
 
 export function SettingsForm({ projectId, initialData }: Props) {
-  const qc = useQueryClient()
+  const qc     = useQueryClient()
+  const router = useRouter()
 
   const [name, setName]         = useState(initialData.name)
   const [timezone, setTimezone] = useState(initialData.timezone)
@@ -43,9 +45,10 @@ export function SettingsForm({ projectId, initialData }: Props) {
     slugJaccard: '',
   })
 
-  const [errors, setErrors]   = useState<Record<string, string>>({})
-  const [saved, setSaved]     = useState(false)
-  const [gscMsg, setGscMsg]   = useState<string | null>(null)
+  const [errors, setErrors]     = useState<Record<string, string>>({})
+  const [saved, setSaved]       = useState(false)
+  const [gscMsg, setGscMsg]     = useState<string | null>(null)
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -108,6 +111,21 @@ export function SettingsForm({ projectId, initialData }: Props) {
       window.location.href = res.data.url
     } catch (err) {
       setGscMsg(err instanceof Error ? err.message : 'Errore di rete')
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Sei sicuro? L\'azione è irreversibile.')) return
+    setDeleteMsg(null)
+    try {
+      const res = await apiClient<unknown>(`/api/projects/${projectId}`, { method: 'DELETE' })
+      if (res.error !== null) {
+        setDeleteMsg(res.error.message)
+        return
+      }
+      router.push('/')
+    } catch (err) {
+      setDeleteMsg(err instanceof Error ? err.message : 'Errore di rete')
     }
   }
 
@@ -199,6 +217,15 @@ export function SettingsForm({ projectId, initialData }: Props) {
           </button>
         </div>
         {gscMsg !== null && <p className="text-sm text-muted-foreground">{gscMsg}</p>}
+      </section>
+
+      <section className="flex flex-col gap-3 border-t border-destructive/30 pt-6">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-destructive">Zona pericolosa</h2>
+        <button type="button" onClick={() => void handleDelete()}
+          className="self-start rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90">
+          Elimina progetto
+        </button>
+        {deleteMsg !== null && <p className="text-sm text-destructive">{deleteMsg}</p>}
       </section>
     </form>
   )

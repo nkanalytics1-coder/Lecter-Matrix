@@ -91,7 +91,7 @@ export async function GET(req: Request): Promise<Response> {
   // For all error redirects we need projectId (best-effort from state).
   const projectId = statePayload?.projectId ?? ''
   const settingsPath = projectId
-    ? `/app/projects/${projectId}/settings`
+    ? `/p/${projectId}/settings`
     : '/app'
 
   // ── User denied / error from Google ─────────────────────────────────────────

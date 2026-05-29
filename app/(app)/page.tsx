@@ -1,64 +1,54 @@
-'use client'
-
 import type { ReactElement } from 'react'
-import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
-import type { ProjectDTO } from '@/src/contracts/types/entities'
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { requireSession } from '@/server/auth'
+import { listProjects } from '@/server/repositories/project.repo'
 
-export default function ProjectsPage(): ReactElement {
-  const router = useRouter()
-  const query = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => apiClient<ProjectDTO[]>('/api/projects'),
-  })
-
-  if (query.isLoading) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
-        ))}
-      </div>
-    )
+export default async function ProjectsPage(): Promise<ReactElement> {
+  try {
+    await requireSession()
+  } catch {
+    redirect('/login')
   }
 
-  if (query.isError) {
-    return <p className="text-sm text-destructive">Failed to load projects.</p>
-  }
-
-  const result = query.data
-  if (result === undefined) {
-    return <p className="text-sm text-destructive">Failed to load projects.</p>
-  }
-  if (result.error !== null) {
-    return <p className="text-sm text-destructive">{result.error.message}</p>
-  }
-
-  const projects = result.data
-
-  if (projects.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No projects yet. Create one to get started.
-      </p>
-    )
+  let projects
+  try {
+    projects = await listProjects()
+  } catch (err) {
+    console.error('listProjects failed:', err)
+    return <p className="text-sm text-destructive">Impossibile caricare i progetti: {String(err)}</p>
   }
 
   return (
-    <ul className="space-y-2" role="list">
-      {projects.map((project) => (
-        <li key={project.id}>
-          <button
-            type="button"
-            onClick={() => { router.push(`/p/${project.id}/overview`) }}
-            className="w-full rounded-lg border border-border bg-card px-4 py-4 text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <p className="text-sm font-medium text-foreground">{project.name}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">{project.gscProperty}</p>
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-6">
+      <div>
+        <Link
+          href="/onboarding"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          + Crea nuovo progetto
+        </Link>
+      </div>
+
+      {projects.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Nessun progetto ancora. Creane uno per iniziare.
+        </p>
+      ) : (
+        <ul className="space-y-2" role="list">
+          {projects.map((project) => (
+            <li key={project.id}>
+              <Link
+                href={`/p/${project.id}/overview`}
+                className="block w-full rounded-lg border border-border bg-card px-4 py-4 text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <p className="text-sm font-medium text-foreground">{project.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{project.gscProperty}</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
