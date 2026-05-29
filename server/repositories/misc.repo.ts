@@ -147,7 +147,7 @@ export async function getOverview(projectId: string): Promise<OverviewDTO> {
   const conn = connRows[0]
   const sync: OverviewDTO['sync'] = conn !== undefined
     ? { status: conn.status as GscStatus, lastSyncedDate: conn.last_synced_date }
-    : { status: 'error' as GscStatus, lastSyncedDate: null }
+    : { status: 'disconnected' as GscStatus, lastSyncedDate: null }
 
   return { bandCounts, lastRun, sync }
 }

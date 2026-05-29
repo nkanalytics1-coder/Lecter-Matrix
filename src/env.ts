@@ -6,6 +6,10 @@ export const envSchema = z.object({
   NEXT_PUBLIC_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   CRON_SECRET: z.string().min(16),
+  GSC_CLIENT_ID: z.string().min(1),
+  GSC_CLIENT_SECRET: z.string().min(1),
+  GSC_REDIRECT_URI: z.string().url(),
+  TOKEN_ENC_KEY: z.string().min(44).max(44),
   DATABASE_URL_TEST: z.string().url().optional(),
 })
 

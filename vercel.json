@@ -16,6 +16,10 @@
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next-public-supabase-anon-key",
     "SUPABASE_SERVICE_ROLE_KEY":     "@supabase-service-role-key",
     "SUPABASE_DB_URL":               "@supabase-db-url",
-    "CRON_SECRET":                   "@cron-secret"
+    "CRON_SECRET":                   "@cron-secret",
+    "GSC_CLIENT_ID":                 "@gsc-client-id",
+    "GSC_CLIENT_SECRET":             "@gsc-client-secret",
+    "GSC_REDIRECT_URI":              "@gsc-redirect-uri",
+    "TOKEN_ENC_KEY":                 "@token-enc-key"
   }
 }

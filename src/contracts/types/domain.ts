@@ -36,7 +36,7 @@ export type BenignReason = (typeof BenignReason)[number]
 export const ProjectStatus = ['active', 'paused', 'error'] as const
 export type ProjectStatus = (typeof ProjectStatus)[number]
 
-export const GscStatus = ['connected', 'revoked', 'error'] as const
+export const GscStatus = ['pending', 'connected', 'disconnected', 'revoked'] as const
 export type GscStatus = (typeof GscStatus)[number]
 
 export const RunStatus = ['running', 'succeeded', 'failed'] as const

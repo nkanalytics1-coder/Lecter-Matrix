@@ -7,6 +7,10 @@ const valid = {
   NEXT_PUBLIC_URL: 'https://example.com',
   SUPABASE_SERVICE_ROLE_KEY: 'svc-key',
   CRON_SECRET: 'b'.repeat(16),
+  GSC_CLIENT_ID: 'test-client-id',
+  GSC_CLIENT_SECRET: 'test-client-secret',
+  GSC_REDIRECT_URI: 'http://localhost:3000/api/auth/gsc/callback',
+  TOKEN_ENC_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
 }
 
 describe('envSchema', () => {
@@ -20,6 +24,10 @@ describe('envSchema', () => {
     'NEXT_PUBLIC_URL',
     'SUPABASE_SERVICE_ROLE_KEY',
     'CRON_SECRET',
+    'GSC_CLIENT_ID',
+    'GSC_CLIENT_SECRET',
+    'GSC_REDIRECT_URI',
+    'TOKEN_ENC_KEY',
   ])('rejects missing %s', (key) => {
     const copy: Record<string, string | undefined> = { ...valid }
     delete copy[key]

@@ -25,6 +25,11 @@ export default defineConfig({
       NEXT_PUBLIC_URL: 'https://localhost:3000',
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-role-key',
       CRON_SECRET: 'bbbbbbbbbbbbbbbb',
+      GSC_CLIENT_ID: 'test-gsc-client-id',
+      GSC_CLIENT_SECRET: 'test-gsc-client-secret',
+      GSC_REDIRECT_URI: 'http://localhost:3000/api/auth/gsc/callback',
+      // 32 zero-bytes in base64 — used only for token-crypto unit tests
+      TOKEN_ENC_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
     },
   },
 })

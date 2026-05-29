@@ -17,10 +17,14 @@ export interface ProjectRow {
 export interface GscConnectionRow {
   project_id: string
   google_sub: string
-  refresh_token_enc: Buffer
-  scopes: string[]
+  google_account_email: string
+  refresh_token_enc: string
+  access_token: string | null
+  access_token_expires_at: Date | null
   last_synced_date: string | null
   status: string
+  connected_at: Date
+  revoked_at: Date | null
   updated_at: Date
 }
 
