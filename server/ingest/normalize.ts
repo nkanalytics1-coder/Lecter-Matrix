@@ -18,6 +18,19 @@ export function normalizeQuery(raw: string): string {
     .trim()
 }
 
+// ── normalizePageUrl ─────────────────────────────────────────────────────────
+
+export function normalizePageUrl(url: string): string {
+  const parsed = new URL(url, 'https://x')
+  parsed.searchParams.delete('page')
+  parsed.searchParams.delete('sort')
+  parsed.searchParams.delete('view')
+  const isAbsolute = /^https?:\/\//i.test(url)
+  return isAbsolute
+    ? parsed.origin + parsed.pathname + parsed.search
+    : parsed.pathname + parsed.search
+}
+
 // ── classifyPage ────────────────────────────────────────────────────────────
 
 export interface ClassifyRule {
@@ -66,18 +79,29 @@ export function isPersonalized(url: string, markers?: string[]): boolean {
 export interface IntentSignals {
   informational: string[]
   transactional: string[]
+  brandTerms?: string[]
 }
 
-const DEFAULT_SIGNALS: IntentSignals = {
+export const DEFAULT_SIGNALS: IntentSignals = {
   informational: [
-    'come', 'cosa', "cos'", 'guida', 'differenza', 'tutorial',
-    'quando', 'dove', 'perché', 'perche', 'chi', 'spiegazione',
+    'come', 'cosa', "cos'", 'cos-e', 'cos e',
+    'perche', 'perché', 'quando', 'quale', 'quali',
+    'significato', 'differenza', 'differenze',
+    'idee', 'idea', 'guida', 'tipi-di', 'tipi di',
+    'migliore', 'migliori',
+    'dove', 'vantaggi', 'svantaggi', 'caratteristich',
   ],
   transactional: [
-    'prezzo', 'prezzi', 'comprare', 'acquistare', 'acquisto',
-    'online', 'personalizzat', 'offerta', 'sconto', 'vendita',
-    'economico', 'economici', 'shop', 'ordine', 'spedizione',
+    'prezzo', 'prezzi', 'comprare', 'acquist', 'acquisto',
+    'online', 'offerta', 'offerte', 'economic', 'economici',
+    'ingrosso', 'fornitura', 'forniture', 'fornitore',
+    'produzione', 'produttori', 'grossista', 'vendita',
+    'shop', 'b2b', 'su-misura', 'su misura',
+    'personalizzat', 'con-logo', 'con logo',
+    'catalogo', 'preventiv', 'listino', 'campion',
+    'sconto', 'sconti', 'ordine', 'ordini',
   ],
+  brandTerms: [],
 }
 
 function escapeRegex(s: string): string {
@@ -85,15 +109,24 @@ function escapeRegex(s: string): string {
 }
 
 function hasSignal(query: string, signal: string): boolean {
-  return new RegExp(`(?:^|\\s)${escapeRegex(signal)}`).test(query)
+  return new RegExp('(?:^|\\s)' + escapeRegex(signal)).test(query)
 }
 
+// Brand terms require a right-word boundary so "acmeshopper" doesn't match brand "acme".
+function hasBrandSignal(query: string, term: string): boolean {
+  return new RegExp('(?:^|\\s)' + escapeRegex(term) + '(?!\\w)').test(query)
+}
+
+// Priority: navigational > informational > transactional > unknown
 export function detectIntent(queryNorm: string, signals?: IntentSignals): Intent {
-  const effectiveSignals = signals ?? DEFAULT_SIGNALS
-  for (const signal of effectiveSignals.informational) {
+  const s = signals ?? DEFAULT_SIGNALS
+  for (const term of s.brandTerms ?? []) {
+    if (hasBrandSignal(queryNorm, term)) return 'navigational'
+  }
+  for (const signal of s.informational) {
     if (hasSignal(queryNorm, signal)) return 'informational'
   }
-  for (const signal of effectiveSignals.transactional) {
+  for (const signal of s.transactional) {
     if (hasSignal(queryNorm, signal)) return 'transactional'
   }
   return 'unknown'

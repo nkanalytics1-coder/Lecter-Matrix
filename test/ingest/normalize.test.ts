@@ -4,10 +4,12 @@ vi.mock('server-only', () => ({}))
 
 import {
   normalizeQuery,
+  normalizePageUrl,
   classifyPage,
   slugTokens,
   isPersonalized,
   detectIntent,
+  DEFAULT_SIGNALS,
 } from '../../server/ingest/normalize'
 import type { ClassifyRule, IntentSignals } from '../../server/ingest/normalize'
 import type { PageType, Intent } from '../../src/contracts/types/domain'
@@ -53,6 +55,34 @@ describe('normalizeQuery', () => {
 
   it('does not stem or remove stopwords', () => {
     expect(normalizeQuery('come si usa la carta velina')).toBe('come si usa la carta velina')
+  })
+})
+
+// ── normalizePageUrl ─────────────────────────────────────────────────────────
+
+describe('normalizePageUrl', () => {
+  const cases: Array<[string, string, string]> = [
+    ['strips ?page=N from full URL',           'https://x.it/collections/buste?page=2',              'https://x.it/collections/buste'],
+    ['strips ?page=N from relative path',      '/collections/buste?page=2',                          '/collections/buste'],
+    ['strips ?page=N&sort=…',                  '/collections/buste?page=3&sort=name:asc',            '/collections/buste'],
+    ['strips ?sort only',                      '/collections/buste?sort=price:desc',                 '/collections/buste'],
+    ['strips ?view=quick',                     '/collections/buste?view=quick',                      '/collections/buste'],
+    ['strips ?view=list',                      '/collections/buste?view=list',                       '/collections/buste'],
+    ['strips page+sort+view together',         '/collections/buste?page=2&sort=price:asc&view=grid', '/collections/buste'],
+    ['no-op when no pagination params',        '/collections/buste',                                 '/collections/buste'],
+    ['preserves unrelated query param',        '/collections/buste?foo=bar',                         '/collections/buste?foo=bar'],
+    ['full URL with page and extra param',     'https://x.it/p?page=1&ref=nav',                      'https://x.it/p?ref=nav'],
+    ['full URL no params',                     'https://x.it/collections/buste',                     'https://x.it/collections/buste'],
+  ]
+
+  it.each(cases)('%s', (_label, input, expected) => {
+    expect(normalizePageUrl(input)).toBe(expected)
+  })
+
+  it('collapses page=2 and page=3 to same URL', () => {
+    const base = '/collections/buste'
+    expect(normalizePageUrl(`${base}?page=2`)).toBe(normalizePageUrl(`${base}?page=3`))
+    expect(normalizePageUrl(`${base}?page=2`)).toBe(normalizePageUrl(base))
   })
 })
 
@@ -136,21 +166,57 @@ describe('isPersonalized', () => {
 
 describe('detectIntent', () => {
   const cases: Array<[string, string, Intent]> = [
-    ['how-to query — come',          'come scegliere la carta velina',          'informational'],
-    ['cosa query',                   'cosa si intende per packaging',            'informational'],
-    ["cos'è query — eurofides",      "cos'è il packaging alimentare",            'informational'],
-    ['guida query',                  'guida alla carta velina',                  'informational'],
-    ['differenza query',             'differenza tra carta velina e tissue',      'informational'],
-    ['price query — prezzo',         'carta velina prezzo',                      'transactional'],
-    ['price query — prezzi',         'carta velina prezzi',                      'transactional'],
-    ['personalizzata query',         'carta velina personalizzata',              'transactional'],
-    ['comprare query',               'comprare carta velina online',             'transactional'],
-    ['acquisto query',               'acquisto carta velina',                    'transactional'],
-    ['online query',                 'carta velina online',                      'transactional'],
-    ['sconto query',                 'carta velina sconto',                      'transactional'],
-    ['neutral brand query',          'eurofides packaging',                      'unknown'],
-    ['neutral category query',       'carta velina',                             'unknown'],
-    ['signal not substring of word', 'ecommerce packaging',                      'unknown'],
+    // informational — default linguistic signals
+    ['how-to query — come',               'come scegliere il prodotto',               'informational'],
+    ['cosa query',                        'cosa si intende per packaging',             'informational'],
+    ["cos'è query",                       "cos'è il packaging alimentare",             'informational'],
+    ['quando query',                      'quando si usa questo materiale',            'informational'],
+    ['quale query',                       'quale materiale scegliere',                 'informational'],
+    ['quali query',                       'quali sono i tipi di imballaggi',           'informational'],
+    ['significato query',                 'significato di packaging',                  'informational'],
+    ['differenza query',                  'differenza tra due materiali',              'informational'],
+    ['differenze query',                  'differenze tra i materiali',                'informational'],
+    ['guida query',                       'guida alla scelta',                         'informational'],
+    ['idee query',                        'idee regalo',                               'informational'],
+    ['idea query',                        'idea regalo originale',                     'informational'],
+    ['tipi di query',                     'tipi di imballaggi alimentari',             'informational'],
+    ['migliore query',                    'migliore materiale per alimenti',           'informational'],
+    ['migliori query',                    'migliori soluzioni per la spedizione',      'informational'],
+    // transactional — default universal commercial modifiers
+    ['price query — prezzo',              'articolo prezzo',                           'transactional'],
+    ['price query — prezzi',              'prezzi ingrosso',                           'transactional'],
+    ['personalizzata query',              'prodotto personalizzato',                   'transactional'],
+    ['comprare query',                    'comprare online',                           'transactional'],
+    ['acquisto query',                    'acquisto articolo',                         'transactional'],
+    ['acquist prefix',                    'acquistare materiali',                      'transactional'],
+    ['online query',                      'ordine online',                             'transactional'],
+    ['offerta query',                     'offerta speciale',                          'transactional'],
+    ['ingrosso query',                    'vendita ingrosso',                          'transactional'],
+    ['fornitura query',                   'fornitura materiali',                       'transactional'],
+    ['vendita query',                     'vendita articoli',                          'transactional'],
+    ['b2b query',                         'servizio b2b',                              'transactional'],
+    ['su misura query',                   'prodotto su misura',                        'transactional'],
+    ['con logo query',                    'articolo con logo aziendale',               'transactional'],
+    // informational — enriched signals
+    ['dove query',                          'dove si usa la carta velina',               'informational'],
+    ['vantaggi query',                      'vantaggi del packaging biodegradabile',     'informational'],
+    ['svantaggi query',                     'svantaggi del packaging plastico',          'informational'],
+    ['caratteristich query',                'caratteristiche tecniche del cartone',      'informational'],
+    // transactional — enriched signals
+    ['catalogo query',                      'catalogo buste personalizzate',             'transactional'],
+    ['preventiv query',                     'preventivo imballaggi personalizzati',      'transactional'],
+    ['listino query',                       'listino prezzi ingrosso',                   'transactional'],
+    ['campion query',                       'campioni gratuiti disponibili',             'transactional'],
+    ['sconto query',                        'sconto sul prezzo del packaging',           'transactional'],
+    ['sconti query',                        'sconti ingrosso buste',                     'transactional'],
+    ['ordine query',                        'ordine minimo buste personalizzate',        'transactional'],
+    ['ordini query',                        'ordini all ingrosso',                       'transactional'],
+    // unknown — no default signal in query
+    ['packaging alone → unknown',         'packaging',                                 'unknown'],
+    ['prezzo buste — transactional via prezzo, not buste', 'prezzo buste',            'transactional'],
+    ['neutral brand query',               'eurofides packaging',                       'unknown'],
+    ['neutral category query',            'materiale',                                 'unknown'],
+    ['signal not substring of word',      'ecommerce packaging',                       'unknown'],
   ]
 
   it.each(cases)('%s', (_label, queryNorm, expected) => {
@@ -169,5 +235,34 @@ describe('detectIntent', () => {
 
   it('informational takes priority over transactional when both signals present', () => {
     expect(detectIntent('guida ai prezzi migliori')).toBe('informational')
+  })
+
+  it('navigational when brand term matches — wins over all other signals', () => {
+    const signals: IntentSignals = { ...DEFAULT_SIGNALS, brandTerms: ['acme'] }
+    expect(detectIntent('acme packaging',     signals)).toBe('navigational')
+    expect(detectIntent('prezzo acme',        signals)).toBe('navigational')  // brand > transactional
+    expect(detectIntent('come usare acme',    signals)).toBe('navigational')  // brand > informational
+    expect(detectIntent('packaging',          signals)).toBe('unknown')       // no brand match
+  })
+
+  it('no navigational when brandTerms is empty (default)', () => {
+    expect(detectIntent('eurofides packaging')).toBe('unknown')
+  })
+
+  it('brand term requires right word boundary — no substring match inside a word', () => {
+    const signals: IntentSignals = { ...DEFAULT_SIGNALS, brandTerms: ['acme'] }
+    expect(detectIntent('acmeshopper packaging', signals)).toBe('unknown')     // 'acme' is prefix of a word
+    expect(detectIntent('acme.it packaging',     signals)).toBe('navigational') // '.' is non-word char
+  })
+
+  it('sector signals via extra params — never in defaults', () => {
+    const signals: IntentSignals = {
+      ...DEFAULT_SIGNALS,
+      transactional: [...DEFAULT_SIGNALS.transactional, 'buste', 'sacchetti'],
+    }
+    expect(detectIntent('buste personalizzate', signals)).toBe('transactional')
+    // without extra signals, domain nouns alone are unknown
+    expect(detectIntent('buste personalizzate')).toBe('transactional')  // "personalizzat" is a default signal
+    expect(detectIntent('buste sacchetti')).toBe('unknown')              // no default signal matches
   })
 })
