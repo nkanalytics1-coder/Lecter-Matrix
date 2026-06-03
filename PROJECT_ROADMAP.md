@@ -22,6 +22,11 @@ Goal: connect GSC → detect cannibalization → triage → export. See `MVP_TAS
 - Deploy: Vercel cron + env; one E2E smoke. Tag `v0.1.0`.
 Exit: an analyst onboards a property and acts on real cannibalization findings.
 
+## v0.2 — UX improvements
+Planned post-MVP quality-of-life work; no trigger required.
+
+- **Property picker post-OAuth**: oggi il wizard chiede la property prima di OAuth; se la property non è nell'account Google scelto, l'utente lo scopre tardi. Invertire il flusso: prima OAuth, poi mostrare la lista delle property accessibili via GSC API `sites.list`, e l'utente sceglie. Modifiche: nuova route `GET /api/projects/[id]/gsc/sites` (chiama `sites.list`), nuovo step wizard tra OAuth e creazione progetto, logica di aggiornamento della property in Settings.
+
 ## Trigger-gated features (Phase 2+)
 Each is a localized addition, not a rewrite.
 
