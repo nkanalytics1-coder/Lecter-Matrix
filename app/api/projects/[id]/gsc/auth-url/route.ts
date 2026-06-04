@@ -7,7 +7,7 @@ import { setPending } from '@/server/repositories/connection.repo'
 import { getEncKey } from '@/server/ingest/token-crypto'
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
-const GSC_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
+const GSC_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly openid email'
 
 function buildAuthUrl(projectId: string): { url: string; nonce: string; stateFull: string } {
   const key = getEncKey()

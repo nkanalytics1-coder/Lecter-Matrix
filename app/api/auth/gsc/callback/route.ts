@@ -152,7 +152,12 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   // ── Scope verification ───────────────────────────────────────────────────────
-  if (!tokenRes.scope?.includes('webmasters.readonly')) {
+  const grantedScopes = tokenRes.scope ?? ''
+  if (
+    !grantedScopes.includes('webmasters.readonly') ||
+    !grantedScopes.includes('openid') ||
+    !grantedScopes.includes('email')
+  ) {
     log.warn(requestId, 'gsc.insufficient_scope', { projectId: statePayload.projectId })
     return redirect('', `${settingsPath}?gsc=error&reason=insufficient_scope`, true)
   }
