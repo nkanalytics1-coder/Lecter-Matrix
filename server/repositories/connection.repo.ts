@@ -7,7 +7,20 @@ import type { GscConnectionRow } from '../db/types'
 export async function getConnection(projectId: string): Promise<GscConnectionRow | null> {
   const sql = serviceClient()
   const rows = await sql<GscConnectionRow[]>`
-    SELECT * FROM gsc_connection WHERE project_id = ${projectId}
+    SELECT
+      project_id,
+      google_sub,
+      google_account_email,
+      refresh_token_enc,
+      access_token,
+      access_token_expires_at::text,
+      last_synced_date::text,
+      status,
+      connected_at::text,
+      revoked_at::text,
+      updated_at::text
+    FROM gsc_connection
+    WHERE project_id = ${projectId}
   `
   return rows[0] ?? null
 }
