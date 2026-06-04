@@ -15,7 +15,7 @@ import { getProject } from '../repositories/project.repo'
 import { ContractError } from '../../src/contracts/lib/contract-utils'
 
 const DETECT_WINDOW_DAYS = 90
-const INITIAL_SYNC_DAYS = 90
+const INITIAL_SYNC_DAYS = 7
 // Google access tokens are guaranteed ~1 hour; use as TTL when gsc-client doesn't expose expires_in
 const ACCESS_TOKEN_TTL_MS = 3600 * 1000
 
