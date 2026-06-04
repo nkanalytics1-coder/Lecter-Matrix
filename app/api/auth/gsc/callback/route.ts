@@ -111,6 +111,7 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   if (!code) {
+    log.error(requestId, 'gsc.callback.no_code', { projectId: statePayload.projectId })
     return redirect('', `${settingsPath}?gsc=error&reason=auth_failed`, true)
   }
 
@@ -145,8 +146,8 @@ export async function GET(req: Request): Promise<Response> {
       }
       return redirect('', `${settingsPath}?gsc=error&reason=${reason}`, true)
     }
-  } catch {
-    log.warn(requestId, 'gsc.token_exchange_failed', { projectId: statePayload.projectId })
+  } catch (err) {
+    log.error(requestId, 'gsc.callback.token_exchange_failed', { projectId: statePayload.projectId, meta: String(err) })
     return redirect('', `${settingsPath}?gsc=error&reason=auth_failed`, true)
   }
 
@@ -165,7 +166,7 @@ export async function GET(req: Request): Promise<Response> {
   // ── id_token decode ──────────────────────────────────────────────────────────
   const identity = parseIdToken(tokenRes.id_token)
   if (identity === null) {
-    log.warn(requestId, 'gsc.bad_id_token', { projectId: statePayload.projectId })
+    log.error(requestId, 'gsc.callback.bad_id_token', { projectId: statePayload.projectId })
     return redirect('', `${settingsPath}?gsc=error&reason=auth_failed`, true)
   }
 
