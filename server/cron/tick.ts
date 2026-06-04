@@ -69,7 +69,7 @@ export async function syncProject(
     // ── 3. Resolve access token ──────────────────────────────────────────────
     let accessToken: string
     const now = Date.now()
-    const expiresAt = conn.access_token_expires_at?.getTime() ?? 0
+    const expiresAt = conn.access_token_expires_at ? new Date(conn.access_token_expires_at).getTime() : 0
     const isValid = conn.access_token !== null && expiresAt > now + 60_000
 
     if (isValid && conn.access_token !== null) {

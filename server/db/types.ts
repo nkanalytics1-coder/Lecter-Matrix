@@ -20,7 +20,7 @@ export interface GscConnectionRow {
   google_account_email: string
   refresh_token_enc: string
   access_token: string | null
-  access_token_expires_at: Date | null
+  access_token_expires_at: string | null
   last_synced_date: string | null
   status: string
   connected_at: Date
