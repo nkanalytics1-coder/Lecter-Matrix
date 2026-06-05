@@ -1,3 +1,4 @@
+console.log(JSON.stringify({ts: new Date().toISOString(), msg: 'container started'}))
 // Cloud Run Job entry point. Reads RUN_ID + PROJECT_ID from env.
 // Pipeline: mark running → fetch GSC → load BQ temp table → detect → write results → cleanup.
 // On any failure: mark run failed + drop temp table (best-effort).
@@ -13,6 +14,8 @@ import { decrypt, getEncKey } from '../server/ingest/token-crypto'
 import { runDetection } from '../server/engine/detect'
 import { log } from '../server/log'
 import type { ProjectConfig } from '../src/contracts/schemas/project-config'
+
+console.log(JSON.stringify({ts: new Date().toISOString(), msg: 'imports loaded'}))
 
 const ANALYSIS_DAYS = 90
 const LOAD_CHUNK = 1000
@@ -92,13 +95,16 @@ async function insertTempRows(tableName: string, rows: readonly TempRow[]): Prom
 }
 
 async function main(): Promise<void> {
+  console.log(JSON.stringify({ts: new Date().toISOString(), msg: 'main started'}))
   const { runId, projectId } = loadEnv()
+  console.log(JSON.stringify({ts: new Date().toISOString(), msg: 'env loaded', runId, projectId}))
   const reqId = `job:${runId}`
   const tableName = bqTable(`gsc_metric_temp_${runId}`)
   let tempCreated = false
 
   try {
     // 1. Mark running
+    console.log(JSON.stringify({ts: new Date().toISOString(), msg: 'before first bq call'}))
     await updateRunStatus(runId, 'running', { progressStep: 'starting' })
     log.info(reqId, 'job.started', { projectId })
 
