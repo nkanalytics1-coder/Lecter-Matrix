@@ -1,0 +1,75 @@
+name: Deploy Cloud Run Job
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'cloud-run-job/**'
+      - 'server/**'
+      - 'src/contracts/**'
+
+env:
+  GCP_REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+  REGISTRY: europe-west1-docker.pkg.dev
+  IMAGE_REPO: ${{ vars.GCP_PROJECT_ID || 'lecter-matrix-prod' }}/lecter-matrix-jobs/analysis-job
+  JOB_NAME: lecter-matrix-analysis-job
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f cloud-run-job/Dockerfile \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:latest \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:latest
+
+      - name: Create or update Cloud Run Job
+        run: |
+          IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:${{ github.sha }}
+          GCP_PROJECT=${{ vars.GCP_PROJECT_ID || 'lecter-matrix-prod' }}
+
+          if gcloud run jobs describe ${{ env.JOB_NAME }} \
+               --region=${{ env.GCP_REGION }} \
+               --project=$GCP_PROJECT \
+               --quiet 2>/dev/null; then
+            gcloud run jobs update ${{ env.JOB_NAME }} \
+              --image=$IMAGE \
+              --region=${{ env.GCP_REGION }} \
+              --project=$GCP_PROJECT
+          else
+            gcloud run jobs create ${{ env.JOB_NAME }} \
+              --image=$IMAGE \
+              --region=${{ env.GCP_REGION }} \
+              --project=$GCP_PROJECT \
+              --task-timeout=86400 \
+              --memory=2Gi \
+              --cpu=1 \
+              --max-retries=0 \
+              --set-env-vars="GCP_PROJECT_ID=$GCP_PROJECT,BQ_DATASET=lecter,BQ_LOCATION=${{ env.GCP_REGION }}"
+          fi

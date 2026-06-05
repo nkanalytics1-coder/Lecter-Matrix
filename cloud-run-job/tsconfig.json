@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": false,
+    "outDir": "../dist",
+    "rootDir": ".."
+  },
+  "include": ["../cloud-run-job/**/*"],
+  "exclude": ["../node_modules", "../.next", "../dist"]
+}

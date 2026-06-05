@@ -87,11 +87,11 @@ function pageSlugJaccard(a: string, b: string): number {
   return union === 0 ? 1 : intersection / union
 }
 
-// Fully-qualified transient table for this run. run_id is server-generated (UUID
-// without hyphens); table names cannot be bound parameters, so it is interpolated
-// after a strict allowlist check to keep the statement injection-safe.
+// Fully-qualified transient table for this run. run_id is a standard UUID (with
+// hyphens); table names cannot be bound parameters, so it is interpolated after a
+// strict allowlist check to keep the statement injection-safe.
 function tempTable(runId: string): string {
-  if (!/^[A-Za-z0-9_]+$/.test(runId)) {
+  if (!/^[A-Za-z0-9_-]+$/.test(runId)) {
     throw new Error(`detect: invalid runId for temp table name: ${runId}`)
   }
   return bqTable(`gsc_metric_temp_${runId}`)
