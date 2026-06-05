@@ -21,7 +21,7 @@ export interface GroupMemberDTO {
 }
 
 export interface CannibalizationGroupDTO {
-  id: number
+  id: string
   groupKey: string
   queryNorm: string
   queryIntent: Intent

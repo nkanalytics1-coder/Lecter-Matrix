@@ -15,14 +15,17 @@
 -- ---------------------------------------------------------------------------
 -- One row per project (≤ 1 000 rows lifetime).
 -- Maps to ProjectDTO (src/contracts/types/entities.ts:ProjectDTO).
--- Note: gscProperty, propertyType, timezone, status live in this table in
--- future phases; MVP stores only id + name + timestamps.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `lecter-matrix-prod.gsc_data.project` (
-  id          STRING    NOT NULL,  -- ProjectDTO.id
-  name        STRING    NOT NULL,  -- ProjectDTO.name
-  created_at  TIMESTAMP NOT NULL,  -- ProjectDTO.createdAt
-  updated_at  TIMESTAMP NOT NULL   -- ProjectDTO.updatedAt
+  id            STRING    NOT NULL,  -- ProjectDTO.id
+  name          STRING    NOT NULL,  -- ProjectDTO.name
+  gsc_property  STRING    NOT NULL,  -- ProjectDTO.gscProperty; GSC property URL (sc-domain: or https://)
+  property_type STRING    NOT NULL,  -- PropertyType enum: domain | url_prefix
+  timezone      STRING    NOT NULL,  -- IANA timezone string; default 'UTC'
+  status        STRING    NOT NULL,  -- ProjectStatus enum: active | paused | archived
+  config        JSON,                -- ProjectConfigSchema (src/contracts/schemas/project-config.ts); nullable
+  created_at    TIMESTAMP NOT NULL,  -- ProjectDTO.createdAt
+  updated_at    TIMESTAMP NOT NULL   -- ProjectDTO.updatedAt
 )
 CLUSTER BY id
 OPTIONS (
@@ -86,26 +89,32 @@ OPTIONS (
 -- Partitioned by detected_at for efficient date-range scans; clustered by
 -- (project_id, group_key) for keyset pagination and drill lookups.
 -- Maps to CannibalizationGroupDTO (src/contracts/types/entities.ts).
--- Note: CannibalizationGroupDTO.severity (number) is the raw numeric score;
--- this table stores the derived severityBand as STRING in the `severity` column.
+-- Note: group_key IS the primary key (natural, deterministic). FARM_FINGERPRINT
+-- for a synthetic numeric id is not needed — CannibalizationGroupDTO.id maps
+-- directly to group_key (DTO id type is string, not number).
+-- Note: severity_score is the raw numeric score from scoring.ts (0–100);
+-- severityBand (low|medium|high|critical) is derived in the API layer, not stored.
 -- CannibalizationGroupDTO.dominantPage maps to should_win_page here.
--- Derived fields (lostClicks, memberCount, queryIntent, searchVolume) are
--- computed in the API layer, not stored in BQ.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `lecter-matrix-prod.gsc_data.cannibalization_group` (
   project_id          STRING    NOT NULL,  -- FK → project.id
-  group_key           STRING    NOT NULL,  -- deterministic hash(sorted member pages); CannibalizationGroupDTO.groupKey
+  group_key           STRING    NOT NULL,  -- deterministic hash(sorted member pages); CannibalizationGroupDTO.id + groupKey
   run_id              STRING    NOT NULL,  -- FK → analysis_run.run_id
   query_norm          STRING    NOT NULL,  -- normalised query; CannibalizationGroupDTO.queryNorm
-  severity            STRING    NOT NULL,  -- SeverityBand: low | medium | high | critical (CannibalizationGroupDTO.severityBand)
+  query_intent        STRING    NOT NULL,  -- QueryIntent enum; CannibalizationGroupDTO.queryIntent
+  search_volume       INT64,               -- estimated monthly search volume; nullable (CannibalizationGroupDTO.searchVolume)
+  member_count        INT64     NOT NULL,  -- number of pages in this group; CannibalizationGroupDTO.memberCount
+  severity_score      FLOAT64   NOT NULL,  -- raw numeric score 0–100 from scoring.ts; severityBand derived in API layer
   cann_type           STRING    NOT NULL,  -- CannType enum value; CannibalizationGroupDTO.cannType
   winner_page         STRING,              -- CannibalizationGroupDTO.winnerPage
   should_win_page     STRING,              -- CannibalizationGroupDTO.dominantPage (the page that should rank instead)
   inversion           BOOL      NOT NULL,  -- CannibalizationGroupDTO.inversion
   benign              BOOL      NOT NULL,  -- CannibalizationGroupDTO.benign
+  benign_reason       STRING,              -- reason code when benign = true; nullable (CannibalizationGroupDTO.benignReason)
   recommended_action  STRING    NOT NULL,  -- RecommendedAction enum; CannibalizationGroupDTO.recommendedAction
   total_clicks        INT64     NOT NULL,  -- CannibalizationGroupDTO.totalClicks
   total_impressions   INT64     NOT NULL,  -- CannibalizationGroupDTO.totalImpressions
+  lost_clicks         INT64     NOT NULL,  -- estimated clicks lost to cannibalization; CannibalizationGroupDTO.lostClicks
   detected_at         TIMESTAMP NOT NULL   -- partition column; CannibalizationGroupDTO.updatedAt (run timestamp)
 )
 PARTITION BY DATE(detected_at)

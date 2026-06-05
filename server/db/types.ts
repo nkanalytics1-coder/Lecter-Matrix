@@ -1,6 +1,5 @@
-// Raw DB row types — snake_case, as returned by the postgres driver.
+// Raw DB row types — snake_case, as returned by @google-cloud/bigquery.
 // Mapping to camelCase DTOs happens in repositories only.
-// bigint (int8) columns are returned as string by postgres v3 by default.
 
 export interface ProjectRow {
   id: string
@@ -8,85 +7,74 @@ export interface ProjectRow {
   gsc_property: string
   property_type: string
   timezone: string
-  config: Record<string, unknown>
   status: string
   created_at: Date
   updated_at: Date
 }
 
+// GscConnectionRow retains legacy field names so tick.ts (Fase 9 drop) continues
+// to compile. Fields absent from the BQ gsc_connection schema are returned as
+// null/'' by the BQ repository implementation.
 export interface GscConnectionRow {
   project_id: string
-  google_sub: string
-  google_account_email: string
+  google_sub: string           // not in BQ; returned as ''
+  google_account_email: string // not in BQ; returned as ''
   refresh_token_enc: string
-  access_token: string | null
-  access_token_expires_at: string | null
-  last_synced_date: string | null
+  access_token: string | null  // not in BQ (only encrypted token stored); null in BQ path
+  access_token_expires_at: string | null // stored as ISO-8601 STRING in BQ
+  last_synced_date: string | null        // not in BQ gsc_connection; null in BQ path
   status: string
   connected_at: Date
-  revoked_at: Date | null
+  revoked_at: Date | null      // not in BQ; null in BQ path
   updated_at: Date
 }
 
-export interface GscMetricRow {
+// BQ analysis_run (replaces Postgres detection_run)
+export interface AnalysisRunRow {
+  run_id: string
   project_id: string
-  date: string
-  query: string
-  query_norm: string
-  page: string
-  page_type: string
-  clicks: number
-  impressions: number
-  position: number
-}
-
-export interface DetectionRunRow {
-  id: string
-  project_id: string
-  window_start: string
-  window_end: string
-  status: string
-  groups_found: number | null
+  status: string               // queued | running | completed | failed
+  progress_step: string | null
   started_at: Date
-  finished_at: Date | null
+  completed_at: Date | null
+  error: string | null
+  rows_fetched: string | null  // BQ INT64 returned as string
+  groups_found: string | null  // BQ INT64 returned as string
 }
 
 export interface CannibalizationGroupRow {
-  id: string
   project_id: string
   group_key: string
+  run_id: string
   query_norm: string
-  query_intent: string
-  search_volume: number | null
+  severity: string             // BQ string band: 'low' | 'medium' | 'high' | 'critical'
   cann_type: string
-  total_clicks: number
-  total_impressions: number
-  member_count: number
-  severity: number
   winner_page: string | null
-  dominant_page: string | null
+  should_win_page: string | null // BQ column; maps to dominantPage in DTO
   inversion: boolean
   benign: boolean
-  benign_reason: string | null
   recommended_action: string
-  lost_clicks: number
-  updated_at: Date
+  total_clicks: string         // BQ INT64 returned as string
+  total_impressions: string    // BQ INT64 returned as string
+  detected_at: Date            // maps to updatedAt in DTO
 }
 
 export interface CannibalizationMemberRow {
-  group_id: string
+  project_id: string
+  group_key: string
+  run_id: string
   page: string
   page_type: string
-  clicks: number
-  impressions: number
-  position: number
+  clicks: string               // BQ INT64 returned as string
+  impressions: string          // BQ INT64 returned as string
+  weighted_position: number    // BQ FLOAT64 (maps to position in DTO)
   is_winner: boolean
 }
 
 export interface GroupStateRow {
   project_id: string
   group_key: string
-  status: string
-  notes: string | null
+  status: string               // mapped from BQ column 'state'
+  notes: string | null         // mapped from BQ column 'note'
   updated_at: Date
 }

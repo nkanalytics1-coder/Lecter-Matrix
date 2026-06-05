@@ -11,15 +11,16 @@ import { ActionPanel } from '@/components/groups/ActionPanel'
 import { TriagePanel } from '@/components/groups/TriagePanel'
 
 interface Props {
-  groupId:     number
+  projectId:   string
+  groupKey:    string
   initialData: CannibalizationGroupDTO
 }
 
-export function GroupDetail({ groupId, initialData }: Props) {
+export function GroupDetail({ projectId, groupKey, initialData }: Props) {
   const { data: group } = useQuery({
-    queryKey: ['group', groupId],
+    queryKey: ['group', groupKey],
     queryFn:  async () => {
-      const result = await apiClient<CannibalizationGroupDTO>(`/api/groups/${groupId}`)
+      const result = await apiClient<CannibalizationGroupDTO>(`/api/projects/${projectId}/groups/${groupKey}`)
       if (result.error) throw new Error(result.error.message)
       return result.data
     },
@@ -54,7 +55,8 @@ export function GroupDetail({ groupId, initialData }: Props) {
       <ActionPanel action={group.recommendedAction} />
 
       <TriagePanel
-        groupId={groupId}
+        projectId={projectId}
+        groupKey={groupKey}
         state={group.state}
         updatedAt={group.updatedAt}
       />

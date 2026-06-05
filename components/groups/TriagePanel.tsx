@@ -14,7 +14,8 @@ interface StateResponse {
 }
 
 interface Props {
-  groupId:   number
+  projectId: string
+  groupKey:  string
   state:     { status: GroupStatus; notes: string | null } | null
   updatedAt: string
 }
@@ -34,9 +35,9 @@ const DATE_FMT = new Intl.DateTimeFormat('it-IT', {
   minute: '2-digit',
 })
 
-export function TriagePanel({ groupId, state, updatedAt }: Props) {
+export function TriagePanel({ projectId, groupKey, state, updatedAt }: Props) {
   const queryClient = useQueryClient()
-  const QUERY_KEY   = ['group', groupId] as const
+  const QUERY_KEY   = ['group', groupKey] as const
 
   const currentStatus = state?.status ?? 'open'
   const currentNotes  = state?.notes  ?? ''
@@ -49,7 +50,7 @@ export function TriagePanel({ groupId, state, updatedAt }: Props) {
   const mutation = useMutation({
     mutationFn: async (patch: { status?: GroupStatus; notes?: string | null }) => {
       const result = await apiClient<StateResponse>(
-        `/api/groups/${groupId}/state`,
+        `/api/projects/${projectId}/groups/${groupKey}/state`,
         { method: 'PATCH', body: JSON.stringify(patch) },
       )
       if (result.error) throw new Error(result.error.message)

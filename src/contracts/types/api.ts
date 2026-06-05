@@ -43,5 +43,5 @@ export type PageCursor = string
 
 export interface KeysetCursorPayload {
   sortValue: number | string
-  id:        number
+  id:        number | string
 }

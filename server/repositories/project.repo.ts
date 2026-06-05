@@ -1,8 +1,20 @@
 import 'server-only'
-import { serviceClient } from '../db/client'
+import { bqQuery, bqDml, bqTable } from '../db/bq-client'
 import type { ProjectDTO } from '../../src/contracts/types/entities'
 import type { PropertyType, ProjectStatus, GscStatus, RunStatus } from '../../src/contracts/types/domain'
 import type { CreateProject, UpdateProject } from '../../src/contracts/schemas/requests'
+
+// BQ RunStatus mapping: 'queued'|'completed' → RunStatus contract values
+function mapRunStatus(s: string): RunStatus {
+  if (s === 'completed') return 'succeeded'
+  if (s === 'queued' || s === 'running') return 'running'
+  return 'failed'
+}
+
+// Derive a stable pseudo-integer from a UUID run_id for DTO compatibility
+function runIdToInt(runId: string): number {
+  return parseInt(runId.replace(/-/g, '').slice(0, 8), 16)
+}
 
 interface ProjectListRow {
   id: string
@@ -14,12 +26,11 @@ interface ProjectListRow {
   created_at: Date
   updated_at: Date
   conn_status: string | null
-  last_synced_date: string | null
   run_id: string | null
   run_status: string | null
-  run_groups_found: number | null
+  run_groups_found: string | null // BQ INT64 as string
   run_started_at: Date | null
-  run_finished_at: Date | null
+  run_completed_at: Date | null
 }
 
 function rowToDTO(row: ProjectListRow): ProjectDTO {
@@ -37,17 +48,17 @@ function rowToDTO(row: ProjectListRow): ProjectDTO {
   if (row.conn_status !== null) {
     dto.connection = {
       status: row.conn_status as GscStatus,
-      lastSyncedDate: row.last_synced_date,
+      lastSyncedDate: null, // last_synced_date not in BQ gsc_connection
     }
   }
 
   if (row.run_id !== null && row.run_started_at !== null && row.run_status !== null) {
     dto.lastRun = {
-      id: parseInt(row.run_id, 10),
-      status: row.run_status as RunStatus,
-      groupsFound: row.run_groups_found,
+      id: runIdToInt(row.run_id),
+      status: mapRunStatus(row.run_status),
+      groupsFound: row.run_groups_found !== null ? Number(row.run_groups_found) : null,
       startedAt: row.run_started_at.toISOString(),
-      finishedAt: row.run_finished_at?.toISOString() ?? null,
+      finishedAt: row.run_completed_at?.toISOString() ?? null,
     }
   } else {
     dto.lastRun = null
@@ -56,126 +67,104 @@ function rowToDTO(row: ProjectListRow): ProjectDTO {
   return dto
 }
 
-const PROJECT_SELECT = `
-  SELECT
-    p.id, p.name, p.gsc_property, p.property_type, p.timezone, p.status,
-    p.created_at, p.updated_at,
-    gc.status          AS conn_status,
-    gc.last_synced_date,
-    dr.id              AS run_id,
-    dr.status          AS run_status,
-    dr.groups_found    AS run_groups_found,
-    dr.started_at      AS run_started_at,
-    dr.finished_at     AS run_finished_at
-  FROM project p
-  LEFT JOIN gsc_connection gc ON gc.project_id = p.id
-  LEFT JOIN LATERAL (
-    SELECT id, status, groups_found, started_at, finished_at
-    FROM detection_run
-    WHERE project_id = p.id
-    ORDER BY started_at DESC
-    LIMIT 1
-  ) dr ON true
-`
+// WITH CTE to get the latest analysis_run per project (replaces Postgres LATERAL JOIN)
+function projectSelectSql(whereClause = ''): string {
+  return `
+    WITH latest_run AS (
+      SELECT *,
+        ROW_NUMBER() OVER (PARTITION BY project_id ORDER BY started_at DESC) AS rn
+      FROM ${bqTable('analysis_run')}
+    )
+    SELECT
+      p.id, p.name, p.gsc_property, p.property_type, p.timezone, p.status,
+      p.created_at, p.updated_at,
+      gc.status          AS conn_status,
+      lr.run_id,
+      lr.status          AS run_status,
+      lr.groups_found    AS run_groups_found,
+      lr.started_at      AS run_started_at,
+      lr.completed_at    AS run_completed_at
+    FROM ${bqTable('project')} p
+    LEFT JOIN ${bqTable('gsc_connection')} gc ON gc.project_id = p.id
+    LEFT JOIN latest_run lr ON lr.project_id = p.id AND lr.rn = 1
+    ${whereClause}
+  `
+}
 
 export async function listProjects(): Promise<ProjectDTO[]> {
-  const sql = serviceClient()
-  const rows = await sql.unsafe<ProjectListRow[]>(`${PROJECT_SELECT} ORDER BY p.created_at ASC`)
+  const rows = await bqQuery<ProjectListRow>(
+    `${projectSelectSql()} ORDER BY p.created_at ASC`,
+  )
   return rows.map(rowToDTO)
 }
 
 export async function getProject(id: string): Promise<ProjectDTO | null> {
-  const sql = serviceClient()
-  const rows = await sql.unsafe<ProjectListRow[]>(
-    `${PROJECT_SELECT} WHERE p.id = $1`,
-    [id],
+  const rows = await bqQuery<ProjectListRow>(
+    projectSelectSql('WHERE p.id = @id'),
+    { id },
   )
   return rows[0] !== undefined ? rowToDTO(rows[0]) : null
 }
 
 export async function createProject(data: CreateProject): Promise<ProjectDTO> {
-  const sql = serviceClient()
-  const rows = await sql.unsafe<ProjectListRow[]>(
+  const id = crypto.randomUUID()
+  const timezone = data.timezone ?? 'UTC'
+
+  await bqDml(
     `
-    WITH ins AS (
-      INSERT INTO project (name, gsc_property, property_type, timezone)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    )
-    SELECT
-      ins.id, ins.name, ins.gsc_property, ins.property_type, ins.timezone, ins.status,
-      ins.created_at, ins.updated_at,
-      NULL::text   AS conn_status,
-      NULL::date   AS last_synced_date,
-      NULL::text   AS run_id,
-      NULL::text   AS run_status,
-      NULL::int    AS run_groups_found,
-      NULL::timestamptz AS run_started_at,
-      NULL::timestamptz AS run_finished_at
-    FROM ins
+    INSERT INTO ${bqTable('project')} (id, name, gsc_property, property_type, timezone, status, created_at, updated_at)
+    VALUES (@id, @name, @gsc_property, @property_type, @timezone, 'active', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
     `,
-    [data.name, data.gscProperty, data.propertyType, data.timezone ?? 'UTC'],
+    { id, name: data.name, gsc_property: data.gscProperty, property_type: data.propertyType, timezone },
+  )
+
+  const rows = await bqQuery<ProjectListRow>(
+    projectSelectSql('WHERE p.id = @id'),
+    { id },
   )
   if (rows[0] === undefined) throw new Error('createProject: insert returned no row')
   return rowToDTO(rows[0])
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
-  const sql = serviceClient()
-  const rows = await sql`DELETE FROM project WHERE id = ${id} RETURNING id`
-  return rows.length > 0
+  const check = await bqQuery<{ cnt: string }>(
+    `SELECT COUNT(*) AS cnt FROM ${bqTable('project')} WHERE id = @id`,
+    { id },
+  )
+  if (Number(check[0]?.cnt ?? 0) === 0) return false
+
+  await bqDml(`DELETE FROM ${bqTable('project')} WHERE id = @id`, { id })
+  return true
 }
 
 export async function updateProject(
   id: string,
   data: UpdateProject,
 ): Promise<ProjectDTO | null> {
-  const sql = serviceClient()
+  const setParts: string[] = ['updated_at = CURRENT_TIMESTAMP()']
+  const params: Record<string, unknown> = { id }
 
-  const setParts: string[] = []
-  const params: unknown[] = [id]
-
-  function p(val: unknown): string {
-    params.push(val)
-    return `$${params.length}`
+  if (data.name !== undefined) {
+    setParts.push('name = @name')
+    params['name'] = data.name
+  }
+  if (data.timezone !== undefined) {
+    setParts.push('timezone = @timezone')
+    params['timezone'] = data.timezone
+  }
+  if (data.status !== undefined) {
+    setParts.push('status = @status')
+    params['status'] = data.status
   }
 
-  if (data.name !== undefined) setParts.push(`name = ${p(data.name)}`)
-  if (data.timezone !== undefined) setParts.push(`timezone = ${p(data.timezone)}`)
-  if (data.status !== undefined) setParts.push(`status = ${p(data.status)}`)
-  if (data.config !== undefined) setParts.push(`config = ${p(JSON.stringify(data.config))}::jsonb`)
-  setParts.push('updated_at = now()')
-
-  const rows = await sql.unsafe<ProjectListRow[]>(
-    `
-    WITH upd AS (
-      UPDATE project
-      SET ${setParts.join(', ')}
-      WHERE id = $1
-      RETURNING *
-    )
-    SELECT
-      upd.id, upd.name, upd.gsc_property, upd.property_type, upd.timezone, upd.status,
-      upd.created_at, upd.updated_at,
-      gc.status          AS conn_status,
-      gc.last_synced_date,
-      dr.id              AS run_id,
-      dr.status          AS run_status,
-      dr.groups_found    AS run_groups_found,
-      dr.started_at      AS run_started_at,
-      dr.finished_at     AS run_finished_at
-    FROM upd
-    LEFT JOIN gsc_connection gc ON gc.project_id = upd.id
-    LEFT JOIN LATERAL (
-      SELECT id, status, groups_found, started_at, finished_at
-      FROM detection_run
-      WHERE project_id = upd.id
-      ORDER BY started_at DESC
-      LIMIT 1
-    ) dr ON true
-    `,
-    params as never[],
+  await bqDml(
+    `UPDATE ${bqTable('project')} SET ${setParts.join(', ')} WHERE id = @id`,
+    params,
   )
 
+  const rows = await bqQuery<ProjectListRow>(
+    projectSelectSql('WHERE p.id = @id'),
+    { id },
+  )
   return rows[0] !== undefined ? rowToDTO(rows[0]) : null
 }

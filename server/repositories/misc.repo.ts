@@ -1,82 +1,100 @@
 import 'server-only'
-import { serviceClient } from '../db/client'
+import { bqQuery, bqDml, bqTable } from '../db/bq-client'
 import type { OverviewDTO } from '../../src/contracts/types/entities'
 import type { GroupStateRow } from '../db/types'
 import type { SeverityBand, GscStatus, RunStatus } from '../../src/contracts/types/domain'
 import type { UpdateGroupState } from '../../src/contracts/schemas/requests'
 
-// ── Group state ────────────────────────────────────────────────────────────
+// BQ RunStatus mapping: 'queued'|'completed' → RunStatus contract values
+function mapRunStatus(s: string): RunStatus {
+  if (s === 'completed') return 'succeeded'
+  if (s === 'queued' || s === 'running') return 'running'
+  return 'failed'
+}
+
+// Derive a stable pseudo-integer from a UUID run_id for DTO compatibility
+function runIdToInt(runId: string): number {
+  return parseInt(runId.replace(/-/g, '').slice(0, 8), 16)
+}
+
+// ── Group state ────────────────────────────────────────────────────────────────
+// BQ group_state columns: project_id, group_key, state, note, updated_at
+// GroupStateRow uses 'status' / 'notes' (legacy names); mapped here.
 
 export async function upsertGroupState(
   projectId: string,
   groupKey: string,
   data: UpdateGroupState,
 ): Promise<GroupStateRow> {
-  const sql = serviceClient()
+  const newState = (data.status as string | undefined) ?? 'open'
+  const newNote = (data.notes as string | null | undefined) ?? null
 
-  const setParts: string[] = ['updated_at = now()']
-  const params: unknown[] = [projectId, groupKey]
-
-  function p(val: unknown): string {
-    params.push(val)
-    return `$${params.length}`
-  }
-
-  if (data.status !== undefined) setParts.push(`status = ${p(data.status)}`)
-  if (data.notes !== undefined) setParts.push(`notes = ${p(data.notes)}`)
-
-  const rows = await sql.unsafe<GroupStateRow[]>(
+  await bqDml(
     `
-    INSERT INTO group_state (project_id, group_key, status, notes)
-    VALUES ($1, $2, COALESCE($3, 'open'), $4)
-    ON CONFLICT (project_id, group_key) DO UPDATE
-      SET ${setParts.join(', ')}
-    RETURNING *
+    MERGE ${bqTable('group_state')} T
+    USING (SELECT @project_id AS project_id, @group_key AS group_key) S
+    ON T.project_id = S.project_id AND T.group_key = S.group_key
+    WHEN MATCHED THEN
+      UPDATE SET
+        state      = @state,
+        note       = @note,
+        updated_at = CURRENT_TIMESTAMP()
+    WHEN NOT MATCHED THEN
+      INSERT (project_id, group_key, state, note, updated_at)
+      VALUES (@project_id, @group_key, @state, @note, CURRENT_TIMESTAMP())
     `,
-    [
-      projectId,
-      groupKey,
-      (data.status as string | undefined) ?? null,
-      (data.notes as string | null | undefined) ?? null,
-    ],
+    { project_id: projectId, group_key: groupKey, state: newState, note: newNote },
   )
 
-  if (rows[0] === undefined) throw new Error('upsertGroupState: no row returned')
-  return rows[0]
+  const row = await getGroupState(projectId, groupKey)
+  if (row === null) throw new Error('upsertGroupState: MERGE produced no row')
+  return row
 }
 
 export async function getGroupState(
   projectId: string,
   groupKey: string,
 ): Promise<GroupStateRow | null> {
-  const sql = serviceClient()
-  const rows = await sql<GroupStateRow[]>`
-    SELECT * FROM group_state
-    WHERE project_id = ${projectId} AND group_key = ${groupKey}
-  `
-  return rows[0] ?? null
+  const rows = await bqQuery<{ project_id: string; group_key: string; state: string; note: string | null; updated_at: Date }>(
+    `
+    SELECT project_id, group_key, state, note, updated_at
+    FROM ${bqTable('group_state')}
+    WHERE project_id = @project_id AND group_key = @group_key
+    `,
+    { project_id: projectId, group_key: groupKey },
+  )
+
+  const row = rows[0]
+  if (row === undefined) return null
+
+  return {
+    project_id: row.project_id,
+    group_key: row.group_key,
+    status: row.state,   // BQ 'state' → GroupStateRow 'status'
+    notes: row.note,     // BQ 'note'  → GroupStateRow 'notes'
+    updated_at: row.updated_at,
+  }
 }
 
-// ── Overview ───────────────────────────────────────────────────────────────
+// ── Overview ───────────────────────────────────────────────────────────────────
 
 interface BandCountRow {
   band: string
-  groups: number
-  impressions: number
-  lost_clicks: number
+  groups: string       // BQ INT64 as string
+  impressions: string  // BQ INT64 as string
+  lost_clicks: string  // BQ INT64 as string
 }
 
 interface RunRow {
-  id: string
+  run_id: string
   status: string
-  groups_found: number | null
+  groups_found: string | null
   started_at: Date
-  finished_at: Date | null
+  completed_at: Date | null
 }
 
 interface ConnRow {
   status: string
-  last_synced_date: string | null
 }
 
 const EMPTY_BAND: OverviewDTO['bandCounts'][SeverityBand] = {
@@ -86,36 +104,43 @@ const EMPTY_BAND: OverviewDTO['bandCounts'][SeverityBand] = {
 }
 
 export async function getOverview(projectId: string): Promise<OverviewDTO> {
-  const sql = serviceClient()
-
   const [bandRows, runRows, connRows] = await Promise.all([
-    sql<BandCountRow[]>`
+    bqQuery<BandCountRow>(
+      `
       SELECT
         CASE
-          WHEN severity >= 70 THEN 'critical'
-          WHEN severity >= 50 THEN 'high'
-          WHEN severity >= 30 THEN 'medium'
+          WHEN severity_score >= 70 THEN 'critical'
+          WHEN severity_score >= 50 THEN 'high'
+          WHEN severity_score >= 30 THEN 'medium'
           ELSE 'low'
-        END                        AS band,
-        COUNT(*)::int               AS groups,
-        SUM(total_impressions)::int AS impressions,
-        SUM(lost_clicks)::int       AS lost_clicks
-      FROM cannibalization_group
-      WHERE project_id = ${projectId}
+        END                            AS band,
+        CAST(COUNT(*) AS STRING)       AS groups,
+        CAST(SUM(CAST(total_impressions AS INT64)) AS STRING) AS impressions,
+        CAST(SUM(CAST(lost_clicks AS INT64)) AS STRING)       AS lost_clicks
+      FROM ${bqTable('cannibalization_group')}
+      WHERE project_id = @project_id
       GROUP BY band
-    `,
-    sql<RunRow[]>`
-      SELECT id::text, status, groups_found, started_at, finished_at
-      FROM detection_run
-      WHERE project_id = ${projectId}
+      `,
+      { project_id: projectId },
+    ),
+    bqQuery<RunRow>(
+      `
+      SELECT run_id, status, groups_found, started_at, completed_at
+      FROM ${bqTable('analysis_run')}
+      WHERE project_id = @project_id
       ORDER BY started_at DESC
       LIMIT 1
-    `,
-    sql<ConnRow[]>`
-      SELECT status, last_synced_date::text
-      FROM gsc_connection
-      WHERE project_id = ${projectId}
-    `,
+      `,
+      { project_id: projectId },
+    ),
+    bqQuery<ConnRow>(
+      `
+      SELECT status
+      FROM ${bqTable('gsc_connection')}
+      WHERE project_id = @project_id
+      `,
+      { project_id: projectId },
+    ),
   ])
 
   const bandCounts: OverviewDTO['bandCounts'] = {
@@ -126,27 +151,29 @@ export async function getOverview(projectId: string): Promise<OverviewDTO> {
   }
   for (const r of bandRows) {
     const band = r.band as SeverityBand
-    bandCounts[band] = {
-      groups:     r.groups,
-      impressions: r.impressions,
-      lostClicks: r.lost_clicks,
+    if (band in bandCounts) {
+      bandCounts[band] = {
+        groups:     Number(r.groups),
+        impressions: Number(r.impressions),
+        lostClicks: Number(r.lost_clicks),
+      }
     }
   }
 
   const run = runRows[0]
   const lastRun = run !== undefined
     ? {
-        id: parseInt(run.id, 10),
-        status: run.status as RunStatus,
-        groupsFound: run.groups_found,
+        id: runIdToInt(run.run_id),
+        status: mapRunStatus(run.status),
+        groupsFound: run.groups_found !== null ? Number(run.groups_found) : null,
         startedAt: run.started_at.toISOString(),
-        finishedAt: run.finished_at?.toISOString() ?? null,
+        finishedAt: run.completed_at?.toISOString() ?? null,
       }
     : null
 
   const conn = connRows[0]
   const sync: OverviewDTO['sync'] = conn !== undefined
-    ? { status: conn.status as GscStatus, lastSyncedDate: conn.last_synced_date }
+    ? { status: conn.status as GscStatus, lastSyncedDate: null }
     : { status: 'disconnected' as GscStatus, lastSyncedDate: null }
 
   return { bandCounts, lastRun, sync }

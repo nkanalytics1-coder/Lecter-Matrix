@@ -6,7 +6,39 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { CannibalizationGroupRow, CannibalizationMemberRow } from '../server/db/types'
+// Local types matching the Postgres cannibalization_group/member schema (pre-BQ migration).
+// server/db/types.ts is now BQ-specific; this script still runs against Postgres directly.
+interface CannibalizationGroupRow {
+  id: string
+  project_id: string
+  group_key: string
+  query_norm: string
+  query_intent: string
+  search_volume: number | null
+  cann_type: string
+  total_clicks: number
+  total_impressions: number
+  member_count: number
+  severity: number
+  winner_page: string | null
+  dominant_page: string | null
+  inversion: boolean
+  benign: boolean
+  benign_reason: string | null
+  recommended_action: string
+  lost_clicks: number
+  updated_at: Date
+}
+
+interface CannibalizationMemberRow {
+  group_id: string
+  page: string
+  page_type: string
+  clicks: number
+  impressions: number
+  position: number
+  is_winner: boolean
+}
 
 // ── env setup ──────────────────────────────────────────────────────────────
 // Must execute at module level before any dynamic server-module import so that

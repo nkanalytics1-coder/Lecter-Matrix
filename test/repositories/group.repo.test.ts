@@ -235,7 +235,10 @@ describe.skipIf(!TEST_DB)('group.repo', () => {
     const list = await listGroups(PROJECT_ID, { limit: 1, sort: 'severity:desc' })
     const groupId = list.items[0]!.id
 
-    const drill = await getGroupDrill(groupId)
+    // TODO(bq-migration): this suite still seeds via Postgres migrations and the
+    // numeric `id`; the repo now targets BigQuery keyed by (project_id, group_key).
+    // Drill is now scoped by projectId — rewrite fixtures against the BQ schema.
+    const drill = await getGroupDrill(PROJECT_ID, groupId)
 
     expect(drill).not.toBeNull()
     expect(drill!.id).toBe(groupId)
@@ -249,7 +252,7 @@ describe.skipIf(!TEST_DB)('group.repo', () => {
   })
 
   it('getGroupDrill returns null for non-existent group', async () => {
-    const result = await getGroupDrill(999_999_999)
+    const result = await getGroupDrill(PROJECT_ID, 'nonexistent-group-key')
     expect(result).toBeNull()
   })
 

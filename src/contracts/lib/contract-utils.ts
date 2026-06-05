@@ -37,7 +37,8 @@ export function decodeCursor(cursor: string | undefined | null): KeysetCursorPay
       !('id' in parsed) ||
       (typeof (parsed as Record<string, unknown>)['sortValue'] !== 'number' &&
        typeof (parsed as Record<string, unknown>)['sortValue'] !== 'string') ||
-      typeof (parsed as Record<string, unknown>)['id'] !== 'number'
+      (typeof (parsed as Record<string, unknown>)['id'] !== 'number' &&
+       typeof (parsed as Record<string, unknown>)['id'] !== 'string')
     ) {
       return null
     }

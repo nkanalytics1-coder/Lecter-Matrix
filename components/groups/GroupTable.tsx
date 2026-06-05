@@ -132,7 +132,7 @@ export function GroupTable({ projectId, initialData }: Props) {
         rows={allRows}
         onLoadMore={handleLoadMore}
         hasMore={nextCursorState !== null}
-        onRowClick={(row) => router.push(`/p/${projectId}/groups/${row.id}`)}
+        onRowClick={(row) => router.push(`/p/${projectId}/groups/${row.groupKey}`)}
       />
     </div>
   )

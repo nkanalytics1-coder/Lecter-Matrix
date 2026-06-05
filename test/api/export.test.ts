@@ -13,7 +13,7 @@ import { exportGroups } from '@/server/repositories/group.repo'
 import type { CannibalizationGroupDTO } from '@/src/contracts/types/entities'
 
 const FIXTURE: CannibalizationGroupDTO = {
-  id: 42,
+  id: 'gk-test',
   groupKey: 'gk-test',
   queryNorm: 'test query',
   queryIntent: 'informational',
