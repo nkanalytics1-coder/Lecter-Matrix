@@ -7,6 +7,7 @@ on:
       - 'cloud-run-job/**'
       - 'server/**'
       - 'src/contracts/**'
+  workflow_dispatch:
 
 env:
   GCP_REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
