@@ -1,0 +1,14 @@
+ERROR		
+WARNING	Container called exit(1).	
+		
+		
+INFO		
+NOTICE		
+NOTICE		
+NOTICE		
+ERROR		
+NOTICE		
+INFO		
+NOTICE		
+INFO		
+NOTICE		

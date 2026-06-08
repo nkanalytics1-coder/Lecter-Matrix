@@ -1,5 +1,6 @@
 import 'server-only'
 import { bqQuery, bqDml, bqTable } from '../db/bq-client'
+import { bqTimestampToISO } from '../db/bq-helpers'
 import type { OverviewDTO } from '../../src/contracts/types/entities'
 import type { GroupStateRow } from '../db/types'
 import type { SeverityBand, GscStatus, RunStatus } from '../../src/contracts/types/domain'
@@ -55,7 +56,7 @@ export async function getGroupState(
   projectId: string,
   groupKey: string,
 ): Promise<GroupStateRow | null> {
-  const rows = await bqQuery<{ project_id: string; group_key: string; state: string; note: string | null; updated_at: Date }>(
+  const rows = await bqQuery<{ project_id: string; group_key: string; state: string; note: string | null; updated_at: unknown }>(
     `
     SELECT project_id, group_key, state, note, updated_at
     FROM ${bqTable('group_state')}
@@ -89,8 +90,8 @@ interface RunRow {
   run_id: string
   status: string
   groups_found: string | null
-  started_at: Date
-  completed_at: Date | null
+  started_at: unknown
+  completed_at: unknown
 }
 
 interface ConnRow {
@@ -166,8 +167,8 @@ export async function getOverview(projectId: string): Promise<OverviewDTO> {
         id: runIdToInt(run.run_id),
         status: mapRunStatus(run.status),
         groupsFound: run.groups_found !== null ? Number(run.groups_found) : null,
-        startedAt: run.started_at.toISOString(),
-        finishedAt: run.completed_at?.toISOString() ?? null,
+        startedAt: bqTimestampToISO(run.started_at) as string,
+        finishedAt: bqTimestampToISO(run.completed_at),
       }
     : null
 

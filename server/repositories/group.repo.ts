@@ -1,6 +1,7 @@
 import 'server-only'
 import { bqQuery, bqTable } from '../db/bq-client'
 import type { BqParamTypes } from '../db/bq-client'
+import { bqTimestampToISO } from '../db/bq-helpers'
 import { encodeCursor, decodeCursor } from '../../src/contracts/lib/contract-utils'
 import type { GroupListQuery } from '../../src/contracts/schemas/requests'
 import type { CannibalizationGroupDTO, GroupMemberDTO } from '../../src/contracts/types/entities'
@@ -45,7 +46,7 @@ interface ListRow {
   benign_reason: string | null
   recommended_action: string
   lost_clicks: string          // BQ INT64 as string
-  detected_at: Date
+  detected_at: unknown
   gs_status: string | null
   gs_notes: string | null
 }
@@ -88,7 +89,7 @@ function rowToDTO(row: ListRow, members?: GroupMemberDTO[]): CannibalizationGrou
     state: row.gs_status !== null
       ? { status: row.gs_status as GroupStatus, notes: row.gs_notes }
       : null,
-    updatedAt: row.detected_at.toISOString(),
+    updatedAt: bqTimestampToISO(row.detected_at) as string,
   }
   if (members !== undefined) dto.members = members
   return dto

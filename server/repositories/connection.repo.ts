@@ -17,8 +17,8 @@ export async function getConnection(projectId: string): Promise<GscConnectionRow
     status: string
     refresh_token_enc: string
     access_token_expires_at: string | null
-    connected_at: Date
-    updated_at: Date
+    connected_at: unknown
+    updated_at: unknown
   }>(
     `
     SELECT

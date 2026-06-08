@@ -8,8 +8,8 @@ export interface ProjectRow {
   property_type: string
   timezone: string
   status: string
-  created_at: Date
-  updated_at: Date
+  created_at: unknown
+  updated_at: unknown
 }
 
 // GscConnectionRow retains legacy field names so tick.ts (Fase 9 drop) continues
@@ -24,9 +24,9 @@ export interface GscConnectionRow {
   access_token_expires_at: string | null // stored as ISO-8601 STRING in BQ
   last_synced_date: string | null        // not in BQ gsc_connection; null in BQ path
   status: string
-  connected_at: Date
-  revoked_at: Date | null      // not in BQ; null in BQ path
-  updated_at: Date
+  connected_at: unknown
+  revoked_at: unknown          // not in BQ; null in BQ path
+  updated_at: unknown
 }
 
 // BQ analysis_run (replaces Postgres detection_run)
@@ -35,8 +35,8 @@ export interface AnalysisRunRow {
   project_id: string
   status: string               // queued | running | completed | failed
   progress_step: string | null
-  started_at: Date
-  completed_at: Date | null
+  started_at: unknown
+  completed_at: unknown
   error: string | null
   rows_fetched: string | null  // BQ INT64 returned as string
   groups_found: string | null  // BQ INT64 returned as string
@@ -56,7 +56,7 @@ export interface CannibalizationGroupRow {
   recommended_action: string
   total_clicks: string         // BQ INT64 returned as string
   total_impressions: string    // BQ INT64 returned as string
-  detected_at: Date            // maps to updatedAt in DTO
+  detected_at: unknown         // maps to updatedAt in DTO
 }
 
 export interface CannibalizationMemberRow {
@@ -76,5 +76,5 @@ export interface GroupStateRow {
   group_key: string
   status: string               // mapped from BQ column 'state'
   notes: string | null         // mapped from BQ column 'note'
-  updated_at: Date
+  updated_at: unknown
 }

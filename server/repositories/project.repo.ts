@@ -1,5 +1,6 @@
 import 'server-only'
 import { bqQuery, bqDml, bqTable } from '../db/bq-client'
+import { bqTimestampToISO } from '../db/bq-helpers'
 import type { ProjectDTO } from '../../src/contracts/types/entities'
 import type { PropertyType, ProjectStatus, GscStatus, RunStatus } from '../../src/contracts/types/domain'
 import type { CreateProject, UpdateProject } from '../../src/contracts/schemas/requests'
@@ -23,14 +24,14 @@ interface ProjectListRow {
   property_type: string
   timezone: string
   status: string
-  created_at: Date
-  updated_at: Date
+  created_at: unknown
+  updated_at: unknown
   conn_status: string | null
   run_id: string | null
   run_status: string | null
   run_groups_found: string | null // BQ INT64 as string
-  run_started_at: Date | null
-  run_completed_at: Date | null
+  run_started_at: unknown
+  run_completed_at: unknown
 }
 
 function rowToDTO(row: ProjectListRow): ProjectDTO {
@@ -41,8 +42,8 @@ function rowToDTO(row: ProjectListRow): ProjectDTO {
     propertyType: row.property_type as PropertyType,
     timezone: row.timezone,
     status: row.status as ProjectStatus,
-    createdAt: row.created_at.toISOString(),
-    updatedAt: row.updated_at.toISOString(),
+    createdAt: bqTimestampToISO(row.created_at) as string,
+    updatedAt: bqTimestampToISO(row.updated_at) as string,
   }
 
   if (row.conn_status !== null) {
@@ -57,8 +58,8 @@ function rowToDTO(row: ProjectListRow): ProjectDTO {
       id: runIdToInt(row.run_id),
       status: mapRunStatus(row.run_status),
       groupsFound: row.run_groups_found !== null ? Number(row.run_groups_found) : null,
-      startedAt: row.run_started_at.toISOString(),
-      finishedAt: row.run_completed_at?.toISOString() ?? null,
+      startedAt: bqTimestampToISO(row.run_started_at) as string,
+      finishedAt: bqTimestampToISO(row.run_completed_at),
     }
   } else {
     dto.lastRun = null

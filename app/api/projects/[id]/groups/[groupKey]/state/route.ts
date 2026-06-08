@@ -1,6 +1,7 @@
 import { withHandler } from '@/server/http'
 import { UpdateGroupStateSchema } from '@/src/contracts/schemas/requests'
 import { upsertGroupState } from '@/server/repositories/misc.repo'
+import { bqTimestampToISO } from '@/server/db/bq-helpers'
 import { ContractError } from '@/src/contracts/lib/contract-utils'
 import { log } from '@/server/log'
 import type { GroupStatus } from '@/src/contracts/types/domain'
@@ -20,7 +21,7 @@ export async function PATCH(req: Request, ctx: Ctx): Promise<Response> {
       groupKey,
       status:    row.status as GroupStatus,
       notes:     row.notes,
-      updatedAt: row.updated_at.toISOString(),
+      updatedAt: bqTimestampToISO(row.updated_at) as string,
     }
   })(req)
 }

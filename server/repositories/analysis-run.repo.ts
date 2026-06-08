@@ -1,6 +1,7 @@
 import 'server-only'
 import { randomUUID } from 'crypto'
 import { bqQuery, bqDml, bqTable } from '../db/bq-client'
+import { bqTimestampToISO } from '../db/bq-helpers'
 import type { AnalysisRunDTO, AnalysisStatus } from '../../src/contracts/types/api'
 
 // Raw analysis_run row as returned by @google-cloud/bigquery (snake_case;
@@ -10,8 +11,8 @@ interface AnalysisRunQueryRow {
   project_id:    string
   status:        string
   progress_step: string | null
-  started_at:    Date
-  completed_at:  Date | null
+  started_at:    unknown
+  completed_at:  unknown
   error:         string | null
   rows_fetched:  string | null // BQ INT64 as string
   groups_found:  string | null // BQ INT64 as string
@@ -25,8 +26,8 @@ function rowToDTO(row: AnalysisRunQueryRow): AnalysisRunDTO {
     runId:        row.run_id,
     status:       row.status as AnalysisStatus,
     progressStep: row.progress_step,
-    startedAt:    row.started_at.toISOString(),
-    completedAt:  row.completed_at?.toISOString() ?? null,
+    startedAt:    bqTimestampToISO(row.started_at) as string,
+    completedAt:  bqTimestampToISO(row.completed_at),
     error:        row.error,
     groupsFound:  row.groups_found !== null ? Number(row.groups_found) : null,
     rowsFetched:  row.rows_fetched !== null ? Number(row.rows_fetched) : null,
