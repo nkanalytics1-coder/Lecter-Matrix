@@ -46,3 +46,9 @@ next-env.d.ts
 scripts/*.csv
 
 output.txt
+
+# Cloud Run debug logs
+*-logs.txt
+*-logs.json
+recent.*
+full-logs.json
