@@ -56,6 +56,7 @@ export function withHandler<P = undefined>(
         )
       }
       log.error(requestId, 'request.error')
+      console.error(err)
       return new Response(
         JSON.stringify(fail('internal_error', 'An unexpected error occurred', requestId)),
         { status: 500, headers },
