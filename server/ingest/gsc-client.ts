@@ -26,6 +26,21 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
     grant_type:    'refresh_token',
   })
 
+  const clientId = process.env['GSC_CLIENT_ID'] ?? ''
+  const clientSecret = process.env['GSC_CLIENT_SECRET'] ?? ''
+  console.log(JSON.stringify({
+    ts: new Date().toISOString(),
+    debug: 'token_refresh_attempt',
+    client_id_first6: clientId.slice(0, 6),
+    client_id_last6: clientId.slice(-6),
+    client_id_len: clientId.length,
+    secret_first2: clientSecret.slice(0, 2),
+    secret_last4: clientSecret.slice(-4),
+    secret_len: clientSecret.length,
+    refresh_token_first6: refreshToken.slice(0, 6),
+    refresh_token_len: refreshToken.length,
+  }))
+
   const res = await fetch(GOOGLE_TOKEN_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
