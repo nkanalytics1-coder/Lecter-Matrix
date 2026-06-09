@@ -68,8 +68,6 @@ export function AnalysisButton({ projectId }: Props): ReactElement {
   }, [runStatus, runError, queryClient, projectId])
 
   const handleTrigger = useCallback(async () => {
-    if (!window.confirm("L'analisi può richiedere diverse ore. Confermi?")) return
-
     setTriggering(true)
     setNotification(null)
     try {
@@ -133,6 +131,8 @@ export function AnalysisButton({ projectId }: Props): ReactElement {
       >
         {buttonConfig.label}
       </button>
+
+      <p className="mt-1 text-sm text-gray-500">L'analisi può richiedere diverse ore.</p>
 
       {notification && (
         <div
