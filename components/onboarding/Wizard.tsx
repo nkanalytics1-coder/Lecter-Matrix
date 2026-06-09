@@ -47,6 +47,7 @@ export function Wizard(): ReactElement {
   const [pending, setPending]         = useState(false)
   const [gscMsg, setGscMsg]           = useState<string | null>(null)
   const [createdId, setCreatedId]     = useState<string | null>(null)
+  const [isConnecting, setIsConnecting] = useState(false)
 
   function handleStep1(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -75,15 +76,18 @@ export function Wizard(): ReactElement {
   async function handleConnectGsc() {
     if (createdId === null) return
     setGscMsg(null)
+    setIsConnecting(true)
     try {
       const res = await apiClient<{ url: string }>(`/api/projects/${createdId}/gsc/auth-url`)
       if (res.error !== null) {
         setGscMsg(res.error.message)
+        setIsConnecting(false)
         return
       }
       window.location.href = res.data.url
     } catch (err) {
       setGscMsg(err instanceof Error ? err.message : 'Errore di rete')
+      setIsConnecting(false)
     }
   }
 
@@ -181,9 +185,18 @@ export function Wizard(): ReactElement {
             <button
               type="button"
               onClick={() => { void handleConnectGsc() }}
-              className={btnSecondary}
+              disabled={isConnecting}
+              aria-busy={isConnecting}
+              aria-label={isConnecting ? 'Connessione in corso' : 'Connetti a Google Search Console'}
+              className={`${btnSecondary} inline-flex items-center gap-2 disabled:opacity-50`}
             >
-              Connetti a Google Search Console
+              {isConnecting && (
+                <svg className="h-4 w-4 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeOpacity="0.3" />
+                  <path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              )}
+              {isConnecting ? 'Connessione…' : 'Connetti a Google Search Console'}
             </button>
             {gscMsg !== null && (
               <p className="text-sm text-muted-foreground">{gscMsg}</p>

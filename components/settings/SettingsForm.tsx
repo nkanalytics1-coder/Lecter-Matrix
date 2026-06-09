@@ -47,8 +47,9 @@ export function SettingsForm({ projectId, initialData }: Props) {
 
   const [errors, setErrors]     = useState<Record<string, string>>({})
   const [saved, setSaved]       = useState(false)
-  const [gscMsg, setGscMsg]     = useState<string | null>(null)
-  const [deleteMsg, setDeleteMsg] = useState<string | null>(null)
+  const [gscMsg, setGscMsg]           = useState<string | null>(null)
+  const [isReconnecting, setIsReconnecting] = useState(false)
+  const [deleteMsg, setDeleteMsg]     = useState<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -102,15 +103,18 @@ export function SettingsForm({ projectId, initialData }: Props) {
 
   async function handleReconnect() {
     setGscMsg(null)
+    setIsReconnecting(true)
     try {
       const res = await apiClient<{ url: string }>(`/api/projects/${projectId}/gsc/auth-url`)
       if (res.error !== null) {
         setGscMsg(res.error.message)
+        setIsReconnecting(false)
         return
       }
       window.location.href = res.data.url
     } catch (err) {
       setGscMsg(err instanceof Error ? err.message : 'Errore di rete')
+      setIsReconnecting(false)
     }
   }
 
@@ -212,8 +216,17 @@ export function SettingsForm({ projectId, initialData }: Props) {
         <div className="flex items-center gap-3">
           <SyncStatusPill status={initialData.connection?.status ?? null} />
           <button type="button" onClick={() => void handleReconnect()}
-            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent">
-            Riconnetti
+            disabled={isReconnecting}
+            aria-busy={isReconnecting}
+            aria-label={isReconnecting ? 'Connessione in corso' : 'Riconnetti GSC'}
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50">
+            {isReconnecting && (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeOpacity="0.3" />
+                <path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            )}
+            {isReconnecting ? 'Connessione…' : 'Riconnetti'}
           </button>
         </div>
         {gscMsg !== null && <p className="text-sm text-muted-foreground">{gscMsg}</p>}
