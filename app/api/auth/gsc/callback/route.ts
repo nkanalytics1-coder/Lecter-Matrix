@@ -178,6 +178,7 @@ export async function GET(req: Request): Promise<Response> {
   // ── Persist ──────────────────────────────────────────────────────────────────
   const refreshTokenEnc = encrypt(tokenRes.refresh_token, key)
   const accessTokenExpiresAt = new Date(Date.now() + tokenRes.expires_in * 1000)
+  const scopeArray = grantedScopes.split(' ').filter(Boolean)
 
   await upsertConnection({
     projectId:            statePayload.projectId,
@@ -186,6 +187,7 @@ export async function GET(req: Request): Promise<Response> {
     refreshTokenEnc,
     accessToken:          tokenRes.access_token,
     accessTokenExpiresAt,
+    scopes:               scopeArray,
   })
 
   log.info(requestId, 'gsc.connected', { projectId: statePayload.projectId })

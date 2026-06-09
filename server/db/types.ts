@@ -12,17 +12,18 @@ export interface ProjectRow {
   updated_at: unknown
 }
 
-// GscConnectionRow retains legacy field names so tick.ts (Fase 9 drop) continues
-// to compile. Fields absent from the BQ gsc_connection schema are returned as
-// null/'' by the BQ repository implementation.
+// BQ gsc_connection columns: project_id, status, access_token_enc, refresh_token_enc,
+// access_token_expires_at (STRING), scopes (STRING), google_sub (NULLABLE STRING),
+// google_account_email (NULLABLE STRING), connected_at, updated_at.
 export interface GscConnectionRow {
   project_id: string
-  google_sub: string           // not in BQ; returned as ''
-  google_account_email: string // not in BQ; returned as ''
+  google_sub: string | null
+  google_account_email: string | null
   refresh_token_enc: string
-  access_token: string | null  // not in BQ (only encrypted token stored); null in BQ path
-  access_token_expires_at: string | null // stored as ISO-8601 STRING in BQ
-  last_synced_date: string | null        // not in BQ gsc_connection; null in BQ path
+  access_token: string | null  // plaintext not stored in BQ; null in BQ path
+  access_token_expires_at: string | null
+  scopes: string | null
+  last_synced_date: string | null // not in BQ gsc_connection; null in BQ path
   status: string
   connected_at: unknown
   revoked_at: unknown          // not in BQ; null in BQ path

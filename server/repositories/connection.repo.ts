@@ -4,10 +4,8 @@ import type { GscConnectionRow } from '../db/types'
 
 // BQ gsc_connection schema:
 // project_id, status, access_token_enc, refresh_token_enc, access_token_expires_at (STRING),
-// scopes, connected_at (TIMESTAMP), updated_at (TIMESTAMP)
-//
-// GscConnectionRow keeps legacy field names for tick.ts (Fase 9 drop) compatibility.
-// Fields absent from BQ are returned as null/''.
+// scopes (STRING, space-separated), google_sub (NULLABLE STRING),
+// google_account_email (NULLABLE STRING), connected_at (TIMESTAMP), updated_at (TIMESTAMP).
 
 // ── Read ───────────────────────────────────────────────────────────────────────
 
@@ -15,8 +13,11 @@ export async function getConnection(projectId: string): Promise<GscConnectionRow
   const rows = await bqQuery<{
     project_id: string
     status: string
+    google_sub: string | null
+    google_account_email: string | null
     refresh_token_enc: string
     access_token_expires_at: string | null
+    scopes: string | null
     connected_at: unknown
     updated_at: unknown
   }>(
@@ -24,8 +25,11 @@ export async function getConnection(projectId: string): Promise<GscConnectionRow
     SELECT
       project_id,
       status,
+      google_sub,
+      google_account_email,
       COALESCE(refresh_token_enc, '') AS refresh_token_enc,
       access_token_expires_at,
+      scopes,
       connected_at,
       updated_at
     FROM ${bqTable('gsc_connection')}
@@ -39,15 +43,16 @@ export async function getConnection(projectId: string): Promise<GscConnectionRow
 
   return {
     project_id: row.project_id,
-    google_sub: '',              // not in BQ schema
-    google_account_email: '',   // not in BQ schema
+    google_sub: row.google_sub,
+    google_account_email: row.google_account_email,
     refresh_token_enc: row.refresh_token_enc,
-    access_token: null,          // not in BQ (only encrypted token stored)
+    access_token: null,
     access_token_expires_at: row.access_token_expires_at,
-    last_synced_date: null,      // not in BQ gsc_connection
+    scopes: row.scopes,
+    last_synced_date: null,
     status: row.status,
     connected_at: row.connected_at,
-    revoked_at: null,            // not in BQ
+    revoked_at: null,
     updated_at: row.updated_at,
   }
 }
@@ -78,8 +83,9 @@ export interface UpsertConnectionData {
   googleSub: string
   googleAccountEmail: string
   refreshTokenEnc: string
-  accessToken: string
+  accessToken: string          // plaintext; column absent from BQ — not stored
   accessTokenExpiresAt: Date
+  scopes: string[]
 }
 
 export async function upsertConnection(data: UpsertConnectionData): Promise<void> {
@@ -92,17 +98,20 @@ export async function upsertConnection(data: UpsertConnectionData): Promise<void
   await bqDml(
     `
     INSERT INTO ${bqTable('gsc_connection')} (
-      project_id, status, refresh_token_enc,
-      access_token_expires_at, connected_at, updated_at
+      project_id, status, google_sub, google_account_email, refresh_token_enc,
+      access_token_expires_at, scopes, connected_at, updated_at
     ) VALUES (
-      @project_id, 'connected', @refresh_token_enc,
-      @access_token_expires_at, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()
+      @project_id, 'connected', @google_sub, @google_account_email, @refresh_token_enc,
+      @access_token_expires_at, @scopes, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP()
     )
     `,
     {
       project_id: data.projectId,
+      google_sub: data.googleSub,
+      google_account_email: data.googleAccountEmail,
       refresh_token_enc: data.refreshTokenEnc,
       access_token_expires_at: data.accessTokenExpiresAt.toISOString(),
+      scopes: data.scopes.join(' '),
     },
   )
 }
