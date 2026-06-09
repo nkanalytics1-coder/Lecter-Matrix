@@ -52,3 +52,7 @@ output.txt
 *-logs.json
 recent.*
 full-logs.json
+
+# credential files (never commit)
+client_id.txt
+client_secret.txt
