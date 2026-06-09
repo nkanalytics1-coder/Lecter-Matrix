@@ -115,7 +115,7 @@ export async function getOverview(projectId: string): Promise<OverviewDTO> {
           WHEN severity_score >= 30 THEN 'medium'
           ELSE 'low'
         END                            AS band,
-        CAST(COUNT(*) AS STRING)       AS groups,
+        CAST(COUNT(*) AS STRING)       AS \`groups\`,
         CAST(SUM(CAST(total_impressions AS INT64)) AS STRING) AS impressions,
         CAST(SUM(CAST(lost_clicks AS INT64)) AS STRING)       AS lost_clicks
       FROM ${bqTable('cannibalization_group')}
