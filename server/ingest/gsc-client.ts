@@ -43,11 +43,23 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
     refresh_token_len: refreshToken.length,
   }))
 
-  const res = await fetch(GOOGLE_TOKEN_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body:    body.toString(),
-  })
+  let res: Response
+  try {
+    res = await fetch(GOOGLE_TOKEN_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:    body.toString(),
+    })
+  } catch (fetchErr) {
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      debug: 'token_refresh_fetch_throw',
+      error: String(fetchErr),
+      error_message: fetchErr instanceof Error ? fetchErr.message : 'unknown',
+      error_name: fetchErr instanceof Error ? fetchErr.name : 'unknown',
+    }))
+    throw fetchErr
+  }
 
   const responseBody = await res.clone().text()
   console.log(JSON.stringify({
