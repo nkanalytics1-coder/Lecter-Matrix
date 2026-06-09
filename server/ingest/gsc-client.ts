@@ -38,6 +38,8 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
     secret_last4: clientSecret.slice(-4),
     secret_len: clientSecret.length,
     refresh_token_first6: refreshToken.slice(0, 6),
+    refresh_token_first10: refreshToken.slice(0, 10),
+    refresh_token_last4: refreshToken.slice(-4),
     refresh_token_len: refreshToken.length,
   }))
 
@@ -46,6 +48,14 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body:    body.toString(),
   })
+
+  const responseBody = await res.clone().text()
+  console.log(JSON.stringify({
+    ts: new Date().toISOString(),
+    debug: 'token_refresh_response',
+    status: res.status,
+    body_preview: responseBody.slice(0, 500),
+  }))
 
   if (res.status === 401 || res.status === 403) {
     throw new ContractError('gsc_auth_error', `Token refresh rejected — status ${res.status}`)
