@@ -120,7 +120,13 @@ describe('encodeCursor / decodeCursor', () => {
   })
 
   it('returns null for valid JSON with wrong id type', () => {
-    expect(decodeCursor(btoa(JSON.stringify({ sortValue: 1, id: 'abc' })))).toBeNull()
+    // id must be number or string; boolean is invalid
+    expect(decodeCursor(btoa(JSON.stringify({ sortValue: 1, id: true })))).toBeNull()
+  })
+
+  it('roundtrips a string id (BQ UUID)', () => {
+    const payload = { sortValue: 1, id: 'abc-uuid-string' }
+    expect(decodeCursor(encodeCursor(payload))).toEqual(payload)
   })
 
   it('returns null when the JSON is an array, not an object', () => {

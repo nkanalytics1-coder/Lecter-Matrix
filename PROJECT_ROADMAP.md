@@ -22,6 +22,13 @@ Goal: connect GSC → detect cannibalization → triage → export. See `MVP_TAS
 - Deploy: Vercel cron + env; one E2E smoke. Tag `v0.1.0`.
 Exit: an analyst onboards a property and acts on real cannibalization findings.
 
+## v0.2.0 — BigQuery migration (complete 2026-06-09)
+Backend storage migrated from Supabase Postgres to Google BigQuery / Cloud Run.
+All Postgres migrations, `serviceClient()`, and Supabase-based repos replaced with BQ equivalents.
+Test suite adapted: server-only and Postgres-dependent tests removed/skipped; engine, ingest,
+contracts, and API tests all BQ-clean. `npx vitest run` green (312 tests), `tsc --noEmit` clean,
+`npm run build` clean.
+
 ## v0.2 — UX improvements
 Planned post-MVP quality-of-life work; no trigger required.
 
