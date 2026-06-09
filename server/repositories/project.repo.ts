@@ -1,5 +1,8 @@
 import { bqQuery, bqDml, bqTable } from '../db/bq-client'
 import { bqTimestampToISO } from '../db/bq-helpers'
+import { log } from '../log'
+import { ProjectConfigSchema } from '../../src/contracts/schemas/project-config'
+import type { ProjectConfig } from '../../src/contracts/schemas/project-config'
 import type { ProjectDTO } from '../../src/contracts/types/entities'
 import type { PropertyType, ProjectStatus, GscStatus, RunStatus } from '../../src/contracts/types/domain'
 import type { CreateProject, UpdateProject } from '../../src/contracts/schemas/requests'
@@ -23,6 +26,7 @@ interface ProjectListRow {
   property_type: string
   timezone: string
   status: string
+  config: unknown
   created_at: unknown
   updated_at: unknown
   conn_status: string | null
@@ -34,6 +38,21 @@ interface ProjectListRow {
 }
 
 function rowToDTO(row: ProjectListRow): ProjectDTO {
+  let config: ProjectConfig | null = null
+  if (row.config !== null && row.config !== undefined) {
+    try {
+      const parsed: unknown = typeof row.config === 'string' ? JSON.parse(row.config) : row.config
+      const validated = ProjectConfigSchema.safeParse(parsed)
+      if (validated.success) {
+        config = validated.data
+      } else {
+        log.warn('project.repo', 'project.config_invalid', { projectId: row.id })
+      }
+    } catch {
+      log.warn('project.repo', 'project.config_parse_failed', { projectId: row.id })
+    }
+  }
+
   const dto: ProjectDTO = {
     id: row.id,
     name: row.name,
@@ -41,6 +60,7 @@ function rowToDTO(row: ProjectListRow): ProjectDTO {
     propertyType: row.property_type as PropertyType,
     timezone: row.timezone,
     status: row.status as ProjectStatus,
+    config,
     createdAt: bqTimestampToISO(row.created_at) as string,
     updatedAt: bqTimestampToISO(row.updated_at) as string,
   }
@@ -77,7 +97,7 @@ function projectSelectSql(whereClause = ''): string {
     )
     SELECT
       p.id, p.name, p.gsc_property, p.property_type, p.timezone, p.status,
-      p.created_at, p.updated_at,
+      p.config, p.created_at, p.updated_at,
       gc.status          AS conn_status,
       lr.run_id,
       lr.status          AS run_status,

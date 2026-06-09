@@ -10,6 +10,7 @@ import type {
   RunStatus,
   SeverityBand,
 } from './domain'
+import type { ProjectConfig } from '../schemas/project-config'
 
 export interface GroupMemberDTO {
   page: string
@@ -51,6 +52,7 @@ export interface ProjectDTO {
   propertyType: PropertyType
   timezone: string
   status: ProjectStatus
+  config: ProjectConfig | null
   createdAt: string
   updatedAt: string
   connection?: { status: GscStatus; lastSyncedDate: string | null }

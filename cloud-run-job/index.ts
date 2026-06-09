@@ -13,7 +13,6 @@ import { normalizeQuery, classifyPage } from '../server/ingest/normalize'
 import { decrypt, getEncKey } from '../server/ingest/token-crypto'
 import { runDetection } from '../server/engine/detect'
 import { log } from '../server/log'
-import type { ProjectConfig } from '../src/contracts/schemas/project-config'
 
 console.log(JSON.stringify({ts: new Date().toISOString(), msg: 'imports loaded'}))
 
@@ -207,8 +206,7 @@ async function main(): Promise<void> {
 
     // 7. Run detection (SQL aggregation + TS scoring + BQ writes)
     await updateRunStatus(runId, 'running', { progressStep: 'running detection' })
-    const defaultConfig: ProjectConfig = {}
-    const { groupsFound } = await runDetection(projectId, runId, defaultConfig)
+    const { groupsFound } = await runDetection(projectId, runId, project.config ?? {})
 
     // 8. Drop temp table
     await dropTempTable(tableName)
