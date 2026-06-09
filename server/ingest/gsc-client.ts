@@ -26,48 +26,11 @@ export async function refreshAccessToken(refreshToken: string): Promise<string> 
     grant_type:    'refresh_token',
   })
 
-  const clientId = process.env['GSC_CLIENT_ID'] ?? ''
-  const clientSecret = process.env['GSC_CLIENT_SECRET'] ?? ''
-  console.log(JSON.stringify({
-    ts: new Date().toISOString(),
-    debug: 'token_refresh_attempt',
-    client_id_first6: clientId.slice(0, 6),
-    client_id_last6: clientId.slice(-6),
-    client_id_len: clientId.length,
-    secret_first2: clientSecret.slice(0, 2),
-    secret_last4: clientSecret.slice(-4),
-    secret_len: clientSecret.length,
-    refresh_token_first6: refreshToken.slice(0, 6),
-    refresh_token_first10: refreshToken.slice(0, 10),
-    refresh_token_last4: refreshToken.slice(-4),
-    refresh_token_len: refreshToken.length,
-  }))
-
-  let res: Response
-  try {
-    res = await fetch(GOOGLE_TOKEN_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body:    body.toString(),
-    })
-  } catch (fetchErr) {
-    console.log(JSON.stringify({
-      ts: new Date().toISOString(),
-      debug: 'token_refresh_fetch_throw',
-      error: String(fetchErr),
-      error_message: fetchErr instanceof Error ? fetchErr.message : 'unknown',
-      error_name: fetchErr instanceof Error ? fetchErr.name : 'unknown',
-    }))
-    throw fetchErr
-  }
-
-  const responseBody = await res.clone().text()
-  console.log(JSON.stringify({
-    ts: new Date().toISOString(),
-    debug: 'token_refresh_response',
-    status: res.status,
-    body_preview: responseBody.slice(0, 500),
-  }))
+  const res = await fetch(GOOGLE_TOKEN_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body:    body.toString(),
+  })
 
   if (res.status === 401 || res.status === 403) {
     throw new ContractError('gsc_auth_error', `Token refresh rejected — status ${res.status}`)
