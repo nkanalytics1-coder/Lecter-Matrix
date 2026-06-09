@@ -1,4 +1,3 @@
-import 'server-only'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 
 // AES-256-GCM wire format: base64( IV[12] ‖ ciphertext[N] ‖ authTag[16] )

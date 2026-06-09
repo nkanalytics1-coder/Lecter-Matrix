@@ -1,4 +1,3 @@
-import 'server-only'
 import { BigQuery } from '@google-cloud/bigquery'
 import type { Query } from '@google-cloud/bigquery'
 

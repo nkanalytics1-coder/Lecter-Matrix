@@ -25,8 +25,5 @@ RUN npm install --production --no-package-lock
 COPY --from=build /app/dist ./dist
 
 ENV NODE_ENV=production
-# Resolves 'server-only' to its empty variant (empty.js) instead of the throwing index.js.
-# Required because server/ files use `import 'server-only'` to prevent client-side imports.
-ENV NODE_OPTIONS=--conditions=react-server
 
 CMD ["node", "dist/cloud-run-job/index.js"]

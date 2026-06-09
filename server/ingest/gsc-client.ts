@@ -1,4 +1,3 @@
-import 'server-only'
 import { ContractError, backoffMs } from '../../src/contracts/lib/contract-utils'
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'

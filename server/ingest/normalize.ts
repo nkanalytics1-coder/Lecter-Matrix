@@ -1,4 +1,3 @@
-import 'server-only'
 import type { Intent, PageType } from '../../src/contracts/types/domain'
 
 // ── normalizeQuery ──────────────────────────────────────────────────────────

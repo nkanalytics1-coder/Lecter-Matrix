@@ -1,4 +1,3 @@
-import 'server-only'
 import { bqQuery, bqTable } from '../db/bq-client'
 import type { BqParamTypes } from '../db/bq-client'
 import { bqTimestampToISO } from '../db/bq-helpers'

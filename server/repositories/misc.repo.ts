@@ -1,4 +1,3 @@
-import 'server-only'
 import { bqQuery, bqDml, bqTable } from '../db/bq-client'
 import { bqTimestampToISO } from '../db/bq-helpers'
 import type { OverviewDTO } from '../../src/contracts/types/entities'

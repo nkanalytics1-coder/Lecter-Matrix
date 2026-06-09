@@ -1,4 +1,3 @@
-import 'server-only'
 import { randomUUID } from 'crypto'
 import { bqQuery, bqDml, bqTable } from '../db/bq-client'
 import { bqTimestampToISO } from '../db/bq-helpers'

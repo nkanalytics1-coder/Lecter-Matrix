@@ -1,4 +1,3 @@
-import 'server-only'
 import type { CannType, Intent, PageType, BenignReason } from '../../src/contracts/types/domain'
 import { slugTokens, isPersonalized } from '../ingest/normalize'
 

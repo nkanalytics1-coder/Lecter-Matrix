@@ -1,4 +1,3 @@
-import 'server-only'
 
 interface LogEntry {
   level: 'info' | 'warn' | 'error'

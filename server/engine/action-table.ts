@@ -1,4 +1,3 @@
-import 'server-only'
 import type { CannType, Intent, PageType, RecommendedAction } from '../../src/contracts/types/domain'
 import type { BenignResult } from './scoring'
 

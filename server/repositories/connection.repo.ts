@@ -1,4 +1,3 @@
-import 'server-only'
 import { bqQuery, bqDml, bqTable } from '../db/bq-client'
 import type { GscConnectionRow } from '../db/types'
 
