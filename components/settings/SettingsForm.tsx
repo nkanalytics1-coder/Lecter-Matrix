@@ -211,7 +211,7 @@ export function SettingsForm({ projectId, initialData }: Props) {
       {saved && <p className="text-sm text-green-700 dark:text-green-400">Impostazioni salvate.</p>}
 
       <button type="submit" disabled={mutation.isPending}
-        className="self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+        className="self-start rounded-md px-4 py-2 text-sm font-medium text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400 bg-green-600 hover:bg-green-700">
         {mutation.isPending ? 'Salvataggio…' : 'Salva impostazioni'}
       </button>
 
