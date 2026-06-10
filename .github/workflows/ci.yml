@@ -21,7 +21,7 @@ jobs:
       GSC_CLIENT_SECRET: ${{ secrets.GSC_CLIENT_SECRET || 'placeholder-gsc-client-secret' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
