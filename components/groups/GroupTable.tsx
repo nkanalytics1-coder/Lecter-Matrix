@@ -30,7 +30,10 @@ export function GroupTable({ projectId, initialData }: Props) {
   const sortRef    = useRef(params.sort)
   const cursorRef  = useRef(params.cursor)
   const lastDataRef = useRef<Paginated<CannibalizationGroupDTO> | undefined>(undefined)
-  cursorRef.current = params.cursor // keep in sync every render
+
+  useEffect(() => {
+    cursorRef.current = params.cursor
+  }, [params.cursor])
 
   // Detect sort changes from DataTable's internal sort toggle and reset cursor
   useEffect(() => {

@@ -13,13 +13,15 @@ export function ThemeToggle(): ReactElement {
   const [dark, setDark] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    const isDark =
-      saved !== null
-        ? saved === 'dark'
-        : window.matchMedia('(prefers-color-scheme: dark)').matches
-    setDark(isDark)
-    applyTheme(isDark)
+    void Promise.resolve().then(() => {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      const isDark =
+        saved !== null
+          ? saved === 'dark'
+          : window.matchMedia('(prefers-color-scheme: dark)').matches
+      setDark(isDark)
+      applyTheme(isDark)
+    })
   }, [])
 
   function toggle(): void {
