@@ -176,6 +176,10 @@ export async function updateProject(
     setParts.push('status = @status')
     params['status'] = data.status
   }
+  if (data.config !== undefined) {
+    setParts.push('config = PARSE_JSON(@config)')
+    params['config'] = JSON.stringify(data.config)
+  }
 
   await bqDml(
     `UPDATE ${bqTable('project')} SET ${setParts.join(', ')} WHERE id = @id`,
