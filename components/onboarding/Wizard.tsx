@@ -178,7 +178,7 @@ export function Wizard(): ReactElement {
           <div>
             <h1 className="text-lg font-semibold">Connetti Google Search Console</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Autorizza l'accesso ai dati GSC per avviare la prima sincronizzazione.
+              Autorizza l&apos;accesso ai dati GSC per avviare la prima sincronizzazione.
             </p>
           </div>
           <div className="flex flex-col gap-3">
