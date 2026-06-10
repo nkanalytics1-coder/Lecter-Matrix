@@ -32,20 +32,26 @@ function csvEnum<T extends string>(values: readonly [T, ...T[]]) {
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
+// gscProperty/propertyType are optional: the onboarding wizard creates the
+// project before OAuth (its id seeds the OAuth state) and only knows the
+// property after the operator picks one from the post-OAuth dropdown. Such a
+// project is created as a 'draft' and promoted via PATCH (see UpdateProjectSchema).
 export const CreateProjectSchema = z.object({
   name:         z.string().min(1).max(200),
-  gscProperty:  z.string().min(3).max(255),
-  propertyType: z.enum(PropertyType),
+  gscProperty:  z.string().min(3).max(255).optional(),
+  propertyType: z.enum(PropertyType).optional(),
   timezone:     z.string().optional(),
 })
 export type CreateProject = z.infer<typeof CreateProjectSchema>
 
 export const UpdateProjectSchema = z
   .object({
-    name:     z.string().min(1).max(200).optional(),
-    timezone: z.string().optional(),
-    status:   z.enum(['active', 'paused'] as const).optional(),
-    config:   z.record(z.string(), z.unknown()).optional(),
+    name:         z.string().min(1).max(200).optional(),
+    gscProperty:  z.string().min(3).max(255).optional(),
+    propertyType: z.enum(PropertyType).optional(),
+    timezone:     z.string().optional(),
+    status:       z.enum(['active', 'paused'] as const).optional(),
+    config:       z.record(z.string(), z.unknown()).optional(),
   })
   .refine(
     (d) => Object.values(d).some(v => v !== undefined),

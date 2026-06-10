@@ -33,6 +33,16 @@ function parseCookies(header: string | null): Record<string, string> {
 interface StatePayload {
   projectId: string
   nonce: string
+  flow?: 'onboarding' | 'settings'
+}
+
+// Where to send the browser after the OAuth handshake. The onboarding wizard
+// resumes at its property-picker step; settings reconnect returns to settings.
+function destForFlow(payload: StatePayload | null): string {
+  const projectId = payload?.projectId ?? ''
+  if (!projectId) return '/app'
+  if (payload?.flow === 'onboarding') return `/onboarding?projectId=${projectId}`
+  return `/p/${projectId}/settings`
 }
 
 function verifyState(
@@ -88,37 +98,35 @@ export async function GET(req: Request): Promise<Response> {
   const key = getEncKey()
   const statePayload = verifyState(stateFull, key)
 
-  // For all error redirects we need projectId (best-effort from state).
-  const projectId = statePayload?.projectId ?? ''
-  const settingsPath = projectId
-    ? `/p/${projectId}/settings`
-    : '/app'
+  // Redirect destination (settings vs onboarding wizard) is encoded in the state.
+  const dest = destForFlow(statePayload)
+  const sep = dest.includes('?') ? '&' : '?'
 
   // ── User denied / error from Google ─────────────────────────────────────────
   if (errorParam !== null) {
-    return redirect('', `${settingsPath}?gsc=error&reason=denied`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=denied`, true)
   }
 
   // ── CSRF state validation ────────────────────────────────────────────────────
   if (statePayload === null) {
-    return redirect('', `${settingsPath}?gsc=error&reason=state_mismatch`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=state_mismatch`, true)
   }
 
   const cookies = parseCookies(req.headers.get('cookie'))
   const cookieNonce = cookies[NONCE_COOKIE]
   if (!cookieNonce || cookieNonce !== statePayload.nonce) {
-    return redirect('', `${settingsPath}?gsc=error&reason=state_mismatch`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=state_mismatch`, true)
   }
 
   if (!code) {
     log.error(requestId, 'gsc.callback.no_code', { projectId: statePayload.projectId })
-    return redirect('', `${settingsPath}?gsc=error&reason=auth_failed`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=auth_failed`, true)
   }
 
   // ── Verify project exists ────────────────────────────────────────────────────
   const project = await getProject(statePayload.projectId)
   if (project === null) {
-    return redirect('', `${settingsPath}?gsc=error&reason=project_not_found`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=project_not_found`, true)
   }
 
   // ── Token exchange ───────────────────────────────────────────────────────────
@@ -142,13 +150,13 @@ export async function GET(req: Request): Promise<Response> {
       const reason = tokenRes.error === 'invalid_grant' ? 'code_expired' : 'auth_failed'
       if (res.status >= 500) {
         log.warn(requestId, 'gsc.google_unavailable', { projectId: statePayload.projectId })
-        return redirect('', `${settingsPath}?gsc=error&reason=google_unavailable`, true)
+        return redirect('', `${dest}${sep}gsc=error&reason=google_unavailable`, true)
       }
-      return redirect('', `${settingsPath}?gsc=error&reason=${reason}`, true)
+      return redirect('', `${dest}${sep}gsc=error&reason=${reason}`, true)
     }
   } catch (err) {
     log.error(requestId, 'gsc.callback.token_exchange_failed', { projectId: statePayload.projectId, meta: String(err) })
-    return redirect('', `${settingsPath}?gsc=error&reason=auth_failed`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=auth_failed`, true)
   }
 
   // ── Scope verification ───────────────────────────────────────────────────────
@@ -159,20 +167,20 @@ export async function GET(req: Request): Promise<Response> {
     !grantedScopes.includes('email')
   ) {
     log.warn(requestId, 'gsc.insufficient_scope', { projectId: statePayload.projectId })
-    return redirect('', `${settingsPath}?gsc=error&reason=insufficient_scope`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=insufficient_scope`, true)
   }
 
   // ── refresh_token presence (§6.6) ───────────────────────────────────────────
   if (!tokenRes.refresh_token) {
     log.warn(requestId, 'gsc.missing_refresh_token', { projectId: statePayload.projectId })
-    return redirect('', `${settingsPath}?gsc=error&reason=no_refresh_token`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=no_refresh_token`, true)
   }
 
   // ── id_token decode ──────────────────────────────────────────────────────────
   const identity = parseIdToken(tokenRes.id_token)
   if (identity === null) {
     log.error(requestId, 'gsc.callback.bad_id_token', { projectId: statePayload.projectId })
-    return redirect('', `${settingsPath}?gsc=error&reason=auth_failed`, true)
+    return redirect('', `${dest}${sep}gsc=error&reason=auth_failed`, true)
   }
 
   // ── Persist ──────────────────────────────────────────────────────────────────
@@ -192,5 +200,5 @@ export async function GET(req: Request): Promise<Response> {
 
   log.info(requestId, 'gsc.connected', { projectId: statePayload.projectId })
 
-  return redirect('', `${settingsPath}?gsc=connected`, true)
+  return redirect('', `${dest}${sep}gsc=connected`, true)
 }

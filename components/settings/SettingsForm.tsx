@@ -35,7 +35,7 @@ export function SettingsForm({ projectId, initialData }: Props) {
   const [name, setName]         = useState(initialData.name)
   const [timezone, setTimezone] = useState(initialData.timezone)
   const [status, setStatus]     = useState<'active' | 'paused'>(
-    initialData.status === 'error' ? 'active' : initialData.status,
+    initialData.status === 'active' || initialData.status === 'paused' ? initialData.status : 'active',
   )
 
   const [cfg, setCfg] = useState({

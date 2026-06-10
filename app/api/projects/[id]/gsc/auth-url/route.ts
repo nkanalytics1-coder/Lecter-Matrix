@@ -9,10 +9,14 @@ import { getEncKey } from '@/server/ingest/token-crypto'
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GSC_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly openid email'
 
-function buildAuthUrl(projectId: string): { url: string; nonce: string; stateFull: string } {
+// 'onboarding' makes the OAuth callback return to the wizard's property-picker
+// step; anything else (settings reconnect) returns to the project settings page.
+type OAuthFlow = 'onboarding' | 'settings'
+
+function buildAuthUrl(projectId: string, flow: OAuthFlow): { url: string; nonce: string; stateFull: string } {
   const key = getEncKey()
   const nonce = randomUUID()
-  const payload = Buffer.from(JSON.stringify({ projectId, nonce })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({ projectId, nonce, flow })).toString('base64url')
   const sig = createHmac('sha256', key).update(payload).digest('hex')
   const stateFull = `${payload}.${sig}`
 
@@ -31,11 +35,12 @@ function buildAuthUrl(projectId: string): { url: string; nonce: string; stateFul
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id: projectId } = await ctx.params
-  return withHandler({ protected: true }, async ({ requestId: _requestId }) => {
+  const flow: OAuthFlow = new URL(req.url).searchParams.get('flow') === 'onboarding' ? 'onboarding' : 'settings'
+  return withHandler({ protected: true }, async () => {
     const project = await getProject(projectId)
     if (project === null) throw new ContractError('not_found', 'Project not found')
 
-    const { url, nonce } = buildAuthUrl(projectId)
+    const { url, nonce } = buildAuthUrl(projectId, flow)
 
     const cookieStore = await cookies()
     cookieStore.set('gsc_oauth_nonce', nonce, {

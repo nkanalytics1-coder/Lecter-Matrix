@@ -130,12 +130,25 @@ export async function createProject(data: CreateProject): Promise<ProjectDTO> {
   const id = crypto.randomUUID()
   const timezone = data.timezone ?? 'UTC'
 
+  // When the wizard creates the project before OAuth it has no property yet:
+  // store empty placeholders (columns are NOT NULL) and mark the row 'draft'.
+  // The property dropdown then promotes it to 'active' via updateProject().
+  const hasProperty = data.gscProperty !== undefined && data.propertyType !== undefined
+  const status = hasProperty ? 'active' : 'draft'
+
   await bqDml(
     `
     INSERT INTO ${bqTable('project')} (id, name, gsc_property, property_type, timezone, status, created_at, updated_at)
-    VALUES (@id, @name, @gsc_property, @property_type, @timezone, 'active', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
+    VALUES (@id, @name, @gsc_property, @property_type, @timezone, @status, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
     `,
-    { id, name: data.name, gsc_property: data.gscProperty, property_type: data.propertyType, timezone },
+    {
+      id,
+      name: data.name,
+      gsc_property: data.gscProperty ?? '',
+      property_type: data.propertyType ?? '',
+      timezone,
+      status,
+    },
   )
 
   const rows = await bqQuery<ProjectListRow>(
@@ -167,6 +180,14 @@ export async function updateProject(
   if (data.name !== undefined) {
     setParts.push('name = @name')
     params['name'] = data.name
+  }
+  if (data.gscProperty !== undefined) {
+    setParts.push('gsc_property = @gsc_property')
+    params['gsc_property'] = data.gscProperty
+  }
+  if (data.propertyType !== undefined) {
+    setParts.push('property_type = @property_type')
+    params['property_type'] = data.propertyType
   }
   if (data.timezone !== undefined) {
     setParts.push('timezone = @timezone')

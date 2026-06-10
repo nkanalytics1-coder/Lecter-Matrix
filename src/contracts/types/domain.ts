@@ -33,7 +33,10 @@ export type SeverityBand = (typeof SeverityBand)[number]
 export const BenignReason = ['base_variant', 'mother_child'] as const
 export type BenignReason = (typeof BenignReason)[number]
 
-export const ProjectStatus = ['active', 'paused', 'error'] as const
+// 'draft' = project created (so its id can seed the OAuth state) but the GSC
+// property has not been selected yet; the onboarding wizard promotes it to
+// 'active' once the operator picks a property. See components/onboarding/Wizard.tsx.
+export const ProjectStatus = ['draft', 'active', 'paused', 'error'] as const
 export type ProjectStatus = (typeof ProjectStatus)[number]
 
 export const GscStatus = ['pending', 'connected', 'disconnected', 'revoked'] as const

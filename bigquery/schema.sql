@@ -19,10 +19,10 @@
 CREATE TABLE IF NOT EXISTS `lecter-matrix-prod.gsc_data.project` (
   id            STRING    NOT NULL,  -- ProjectDTO.id
   name          STRING    NOT NULL,  -- ProjectDTO.name
-  gsc_property  STRING    NOT NULL,  -- ProjectDTO.gscProperty; GSC property URL (sc-domain: or https://)
-  property_type STRING    NOT NULL,  -- PropertyType enum: domain | url_prefix
+  gsc_property  STRING    NOT NULL,  -- ProjectDTO.gscProperty; GSC property URL (sc-domain: or https://). Empty string for 'draft' projects (property not yet picked).
+  property_type STRING    NOT NULL,  -- PropertyType enum: domain | url_prefix. Empty string for 'draft' projects.
   timezone      STRING    NOT NULL,  -- IANA timezone string; default 'UTC'
-  status        STRING    NOT NULL,  -- ProjectStatus enum: active | paused | archived
+  status        STRING    NOT NULL,  -- ProjectStatus enum: draft | active | paused | error ('draft' = created pre-OAuth, awaiting property selection in the wizard)
   config        JSON,                -- ProjectConfigSchema (src/contracts/schemas/project-config.ts); nullable
   created_at    TIMESTAMP NOT NULL,  -- ProjectDTO.createdAt
   updated_at    TIMESTAMP NOT NULL   -- ProjectDTO.updatedAt

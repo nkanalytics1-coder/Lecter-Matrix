@@ -62,6 +62,37 @@ export interface QuerySearchAnalyticsParams {
   rowLimit?:   number
 }
 
+export interface GscSite {
+  siteUrl:         string
+  permissionLevel: string
+}
+
+// ── Site list (webmasters/v3/sites) ─────────────────────────────────────────────
+
+/**
+ * List the GSC properties the authorized account can access. Used by the
+ * onboarding property picker after OAuth completes. Single GET, no pagination
+ * (the endpoint returns the full set).
+ */
+export async function listSites(accessToken: string): Promise<GscSite[]> {
+  const res = await fetch(`${GSC_BASE}/sites`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+
+  if (res.status === 401 || res.status === 403) {
+    throw new ContractError('gsc_auth_error', `GSC auth rejected — status ${res.status}`)
+  }
+  if (res.status === 429) {
+    throw new ContractError('rate_limited', `GSC sites.list rate-limited — status ${res.status}`)
+  }
+  if (!res.ok) {
+    throw new ContractError('internal_error', `GSC sites.list failed — status ${res.status}`)
+  }
+
+  const json = await res.json() as { siteEntry?: GscSite[] }
+  return json.siteEntry ?? []
+}
+
 // ── Paginated query ────────────────────────────────────────────────────────────
 
 export async function querySearchAnalytics(
