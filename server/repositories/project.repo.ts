@@ -56,8 +56,11 @@ function rowToDTO(row: ProjectListRow): ProjectDTO {
   const dto: ProjectDTO = {
     id: row.id,
     name: row.name,
-    gscProperty: row.gsc_property,
-    propertyType: row.property_type as PropertyType,
+    // Draft projects store '' placeholders in BQ (columns are NOT NULL);
+    // expose them as null so consumers can branch on "not yet selected"
+    // instead of an empty/invalid PropertyType.
+    gscProperty: row.gsc_property === '' ? null : row.gsc_property,
+    propertyType: row.property_type === '' ? null : (row.property_type as PropertyType),
     timezone: row.timezone,
     status: row.status as ProjectStatus,
     config,

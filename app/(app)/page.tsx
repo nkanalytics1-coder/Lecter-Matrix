@@ -43,7 +43,9 @@ export default async function ProjectsPage(): Promise<ReactElement> {
                 className="block w-full rounded-lg border border-border bg-card px-4 py-4 text-left transition-colors hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <p className="text-sm font-medium text-foreground">{project.name}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{project.gscProperty}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {project.gscProperty ?? <span className="italic">Proprietà non ancora selezionata</span>}
+                </p>
               </Link>
             </li>
           ))}

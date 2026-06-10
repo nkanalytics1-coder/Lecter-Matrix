@@ -145,6 +145,9 @@ async function main(): Promise<void> {
     const endDate = utcToday()
     const startDate = addDays(endDate, -(ANALYSIS_DAYS - 1))
     const siteUrl = project.gscProperty
+    if (siteUrl === null) {
+      throw new Error(`Project ${projectId} has no GSC property selected (draft); cannot sync`)
+    }
 
     let dayIndex = 0
     let rowsFetched = 0

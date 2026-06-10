@@ -48,8 +48,10 @@ export interface CannibalizationGroupDTO {
 export interface ProjectDTO {
   id: string
   name: string
-  gscProperty: string
-  propertyType: PropertyType
+  // null for 'draft' projects created before the GSC property is selected
+  // (the OAuth-first onboarding flow). Non-null once a property is picked.
+  gscProperty: string | null
+  propertyType: PropertyType | null
   timezone: string
   status: ProjectStatus
   config: ProjectConfig | null

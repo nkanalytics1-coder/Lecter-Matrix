@@ -159,7 +159,11 @@ export function SettingsForm({ projectId, initialData }: Props) {
 
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground">Proprietà GSC</span>
-          <span className="text-sm font-medium">{initialData.gscProperty}</span>
+          <span className="text-sm font-medium">
+            {initialData.gscProperty ?? (
+              <span className="italic text-muted-foreground">Non ancora selezionata</span>
+            )}
+          </span>
         </div>
       </section>
 
