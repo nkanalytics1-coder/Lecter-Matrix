@@ -54,16 +54,16 @@ export function AnalysisButton({ projectId }: Props): ReactElement {
     if (prev === 'init') return // first data arrival — no notification
 
     if (runStatus === 'completed') {
-      setNotification({
+      void Promise.resolve().then(() => setNotification({
         type: 'success',
         message: 'Analisi completata. La tabella dei gruppi è stata aggiornata.',
-      })
+      }))
       void queryClient.invalidateQueries({ queryKey: ['groups', projectId] })
     } else if (runStatus === 'failed') {
-      setNotification({
+      void Promise.resolve().then(() => setNotification({
         type: 'error',
         message: runError ?? 'Analisi fallita.',
-      })
+      }))
     }
   }, [runStatus, runError, queryClient, projectId])
 
@@ -132,7 +132,7 @@ export function AnalysisButton({ projectId }: Props): ReactElement {
         {buttonConfig.label}
       </button>
 
-      <p className="mt-1 text-sm text-gray-500">L'analisi può richiedere diverse ore.</p>
+      <p className="mt-1 text-sm text-gray-500">L&apos;analisi può richiedere diverse ore.</p>
 
       {notification && (
         <div
